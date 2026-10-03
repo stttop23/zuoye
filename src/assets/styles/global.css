@@ -1,0 +1,81 @@
+/**
+ * 全局基础样式：只放「所有页面都要用」的东西。
+ * 某个页面专属的样式写在对应 .vue 文件的 <style scoped> 里，别往这里堆。
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  color: var(--st-text-primary);
+  background-color: var(--st-bg-page);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--st-primary);
+  text-decoration: none;
+}
+
+/* 页面主标题 */
+.page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--st-text-primary);
+}
+
+/* 页面副标题 / 说明文字 */
+.page-desc {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--st-text-secondary);
+}
+
+/* 页面区块容器（带白底和圆角，可替代 el-card 做轻量布局） */
+.page-block {
+  padding: var(--st-gap-lg);
+  margin-bottom: var(--st-gap-base);
+  background: var(--st-bg-card);
+  border-radius: var(--st-radius-base);
+  box-shadow: var(--st-shadow-card);
+}
+
+/* 通用 flex 工具类 */
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 滚动条美化（可选，不影响功能） */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--st-text-placeholder);
+  border-radius: var(--st-radius-sm);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

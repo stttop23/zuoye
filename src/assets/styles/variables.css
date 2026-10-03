@@ -1,0 +1,48 @@
+/**
+ * ============================================================
+ *  全组统一变量表（学生工作管理系统）
+ * ============================================================
+ *  规则：全组写样式【禁止】写死颜色值，必须用下面的变量。
+ *  例如：color: var(--st-text-primary);  而不是 color: #303133;
+ *  需要新增颜色时先在群里说一声，由刘皖加到这里。
+ * ============================================================
+ */
+:root {
+  /* ---------- 品牌色 ---------- */
+  --st-primary: #409eff; /* 主色调，等同于 Element Plus 默认蓝 */
+  --st-primary-light: #ecf5ff;
+  --st-success: #67c23a;
+  --st-warning: #e6a23c;
+  --st-danger: #f56c6c;
+  --st-info: #909399;
+
+  /* ---------- 文字 ---------- */
+  --st-text-primary: #303133; /* 标题 / 正文 */
+  --st-text-regular: #606266; /* 常规文字 */
+  --st-text-secondary: #909399; /* 次要说明 */
+  --st-text-placeholder: #c0c4cc;
+
+  /* ---------- 背景 / 边框 ---------- */
+  --st-bg-page: #f5f7fa; /* 页面底色 */
+  --st-bg-card: #ffffff; /* 卡片底色 */
+  --st-border-color: #dcdfe6;
+  --st-border-color-light: #e4e7ed;
+
+  /* ---------- 圆角 ---------- */
+  --st-radius-sm: 4px;
+  --st-radius-base: 8px;
+  --st-radius-lg: 12px;
+
+  /* ---------- 间距 ---------- */
+  --st-gap-sm: 8px;
+  --st-gap-base: 16px;
+  --st-gap-lg: 24px;
+
+  /* ---------- 阴影 ---------- */
+  --st-shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06);
+
+  /* ---------- 布局尺寸 ---------- */
+  --st-header-height: 60px;
+  --st-sidebar-width: 220px;
+  --st-sidebar-width-collapsed: 64px;
+}

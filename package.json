@@ -1,0 +1,24 @@
+{
+  "name": "zuoye",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "学生工作管理系统 - 小组作业",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "format": "prettier --write \"src/**/*.{js,vue,css,json}\""
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "element-plus": "^2.14.7",
+    "vue": "^3.5.43",
+    "vue-router": "^5.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "prettier": "^3.9.9",
+    "vite": "^8.3.2"
+  }
+}
