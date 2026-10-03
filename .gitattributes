@@ -1,0 +1,15 @@
+# 统一换行符：仓库内存 LF，检出时也不自动转 CRLF。
+# 目的：避免 Windows / Mac 混用时，出现「整个文件都变红」的假 diff。
+* text=auto eol=lf
+
+# 二进制文件不做换行符转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# 锁定 lock 文件，减少合并冲突（可选，3 人小组建议保留）
+package-lock.json -diff linguist-generated
