@@ -7,23 +7,23 @@
 面向学生会的日常事务管理前端系统，包含工作台总览、公告通知浏览、请假申请、待办事项四大模块。
 本项目为**纯前端实现**，数据当前使用本地假数据（mock），接口层预留完毕，后端就绪后可直接替换。
 
-> 📘 **队友必读**：[docs/队友开发手册.md](docs/队友开发手册.md) —— 从零开始的完整操作步骤、每天该做什么、遇到报错怎么办。
+> 📘 **架构文档**：[docs/项目框架.md](docs/项目框架.md) —— 目录职责、数据流、分工边界。
 
 ## 二、小组成员及分工
 
 | 成员 | 角色 | 负责内容 | 开发分支 | 负责文件 |
 | --- | --- | --- | --- | --- |
-| 刘皖 | 前端核心开发 / 技术规范 / 仓库管理 | 项目初始化、路由与整体布局、全局样式规范、工作台首页、公告通知页、GitHub 仓库维护与代码合并 | `main` | `router/index.js`、`layout/`、`DashboardView.vue`、`NoticeView.vue` |
-| 罗欣雨 | 请假模块开发 / 答辩主讲 | 请假申请页面、答辩 PPT 与演示讲解 | `feature/luo-xinyu` | `views/LeaveView.vue` |
-| 张晶 | 待办模块开发 / 项目统筹 | 待办事项页面、进度统筹与最终整合 | `feature/zhang-jing` | `views/TodoView.vue` |
+| 刘皖 | 前端核心开发 / 技术规范 / 仓库管理 | 项目初始化、路由与整体布局、全局样式规范、工作台首页、公告通知页、GitHub 仓库维护与代码合并 | `main` | `router/`、`layout/`、`views/dashboard/`、`views/notice/` |
+| 罗欣雨 | 请假模块开发 / 答辩主讲 | 请假申请页面、答辩 PPT 与演示讲解 | `feature/luo-xinyu` | `views/leave/` |
+| 张晶 | 待办模块开发 / 项目统筹 | 待办事项页面、进度统筹与最终整合 | `feature/zhang-jing` | `views/todo/` |
 
 ## 三、技术栈
 
 | 技术 | 版本 | 说明 |
 | --- | --- | --- |
 | Vue | 3.x | 组合式 API（`<script setup>`） |
-| Vite | 7.x | 构建工具，秒级热更新 |
-| Vue Router | 4.x | 前端路由，history 模式 |
+| Vite | 8.x | 构建工具，秒级热更新 |
+| Vue Router | 5.x | 前端路由，history 模式 |
 | Element Plus | 2.x | UI 组件库（全量引入 + 中文语言包） |
 | Prettier | 3.x | 代码格式化，全组统一风格 |
 
@@ -133,22 +133,21 @@ git push                          # ② 收工前推送到远程
 ```
 zuoye/
 ├── docs/
-│   └── 队友开发手册.md          队友上手指南（重要）
-├── public/                     静态资源
+│   └── 项目框架.md             架构与分工说明
 ├── src/
 │   ├── assets/styles/
-│   │   ├── variables.css       全局颜色 / 间距变量（全组统一）
+│   │   ├── variables.css       全局颜色 / 间距变量（全组统一，禁止写死色值）
 │   │   └── global.css          全局基础样式
 │   ├── layout/
-│   │   └── BasicLayout.vue     整体布局：侧边栏 + 顶栏 + 内容区
+│   │   └── BasicLayout.vue     整体布局：侧边栏 + 顶栏 + 面包屑 + 内容区
 │   ├── router/
-│   │   └── index.js            路由表（由刘皖统一维护）
-│   ├── views/
-│   │   ├── DashboardView.vue   工作台首页
-│   │   ├── NoticeView.vue      公告通知
-│   │   ├── LeaveView.vue       请假申请
-│   │   ├── TodoView.vue        待办事项
-│   │   └── NotFoundView.vue    404
+│   │   └── index.js            路由表（刘皖统一维护）
+│   ├── views/                  ★ 一人一个文件夹，互不干扰
+│   │   ├── dashboard/index.vue 工作台首页   （刘皖）
+│   │   ├── notice/index.vue    公告通知    （刘皖）
+│   │   ├── leave/index.vue     请假申请    （罗欣雨 · 占位中）
+│   │   ├── todo/index.vue      待办事项    （张晶 · 占位中）
+│   │   └── NotFoundView.vue    404 页面
 │   ├── App.vue
 │   └── main.js                 入口：Element Plus、路由、全局样式
 ├── .prettierrc.json            格式化规则
@@ -175,7 +174,8 @@ zuoye/
 - [x] 全局样式变量与代码规范
 - [x] 工作台首页
 - [x] 公告通知页面
-- [x] 队友分支创建与开发手册编写
-- [ ] 请假申请页面（罗欣雨，`feature/luo-xinyu`）
-- [ ] 待办事项页面（张晶，`feature/zhang-jing`）
+- [x] 按成员划分独立模块文件夹
+- [x] 队友开发分支创建（`feature/luo-xinyu`、`feature/zhang-jing`）
+- [ ] 请假申请页面（罗欣雨）
+- [ ] 待办事项页面（张晶）
 - [ ] 后端接口对接
