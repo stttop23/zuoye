@@ -9,18 +9,26 @@
             负责开发，当前是占位页面。
           </p>
           <p>
-            请你新建分支
-            <code>feature/张晶</code>
-            ，把本文件内容替换成真实页面。
+            你的开发分支是
+            <code>feature/zhang-jing</code>
+            ，要改的文件只有
+            <code>src/views/TodoView.vue</code>
+            这一个。
+          </p>
+          <p>
+            完整操作步骤见
+            <code>docs/队友开发手册.md</code>
           </p>
         </template>
 
         <template #extra>
           <el-descriptions :column="1" border size="small" class="tip">
-            <el-descriptions-item label="文件位置">src/views/TodoView.vue</el-descriptions-item>
+            <el-descriptions-item label="切换分支">
+              git checkout feature/zhang-jing
+            </el-descriptions-item>
             <el-descriptions-item label="访问地址">http://localhost:5173/todo</el-descriptions-item>
-            <el-descriptions-item label="建议实现">
-              el-checkbox 勾选完成 + el-table 列表 + 新增/删除操作
+            <el-descriptions-item label="参考实现">
+              切到你的分支后，这里会有一份能直接跑起来的待办页示例
             </el-descriptions-item>
           </el-descriptions>
         </template>
@@ -30,7 +38,8 @@
 </template>
 
 <script setup>
-// 占位页：队友开发完成后直接覆盖本文件即可，路由已配好，不需要改 router。
+// 占位页：切到 feature/zhang-jing 分支后这里会替换成完整的待办页示例。
+// 路由已配好，不需要改 router。
 </script>
 
 <style scoped>

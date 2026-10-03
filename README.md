@@ -7,13 +7,15 @@
 面向学生会的日常事务管理前端系统，包含工作台总览、公告通知浏览、请假申请、待办事项四大模块。
 本项目为**纯前端实现**，数据当前使用本地假数据（mock），接口层预留完毕，后端就绪后可直接替换。
 
+> 📘 **队友必读**：[docs/队友开发手册.md](docs/队友开发手册.md) —— 从零开始的完整操作步骤、每天该做什么、遇到报错怎么办。
+
 ## 二、小组成员及分工
 
-| 成员 | 角色 | 负责内容 |
-| --- | --- | --- |
-| 刘皖 | 前端核心开发 / 技术规范 / 仓库管理 | 项目初始化、路由与整体布局、全局样式规范、工作台首页、公告通知页、GitHub 仓库维护与代码合并 |
-| 罗欣雨 | 请假模块开发 / 答辩主讲 | 请假申请页面、答辩 PPT 与演示讲解 |
-| 张晶 | 待办模块开发 / 项目统筹 | 待办事项页面、进度统筹与最终整合 |
+| 成员 | 角色 | 负责内容 | 开发分支 | 负责文件 |
+| --- | --- | --- | --- | --- |
+| 刘皖 | 前端核心开发 / 技术规范 / 仓库管理 | 项目初始化、路由与整体布局、全局样式规范、工作台首页、公告通知页、GitHub 仓库维护与代码合并 | `main` | `router/index.js`、`layout/`、`DashboardView.vue`、`NoticeView.vue` |
+| 罗欣雨 | 请假模块开发 / 答辩主讲 | 请假申请页面、答辩 PPT 与演示讲解 | `feature/luo-xinyu` | `views/LeaveView.vue` |
+| 张晶 | 待办模块开发 / 项目统筹 | 待办事项页面、进度统筹与最终整合 | `feature/zhang-jing` | `views/TodoView.vue` |
 
 ## 三、技术栈
 
@@ -69,16 +71,18 @@ npm run format    # 一键格式化 src 下所有代码
 ### 1. 分支规范
 
 - `main` 分支为**稳定分支**，禁止直接提交业务代码。
-- 每人从 `main` 新建自己的分支开发：
+- 两个队友分支 `feature/luo-xinyu`、`feature/zhang-jing` **已由仓库管理员建好并推送**，队友直接切换过去即可，不需要自己创建：
 
 ```bash
-git checkout main
-git pull origin main
-git checkout -b feature/你的名字     # 例如 feature/罗欣雨
-git push -u origin feature/你的名字
+git clone https://github.com/stttop23/zuoye.git
+cd zuoye
+git checkout feature/luo-xinyu      # 换成你自己的分支名
+npm install
+npm run dev
 ```
 
 - 功能完成后在 GitHub 发起 Pull Request，由仓库管理员审核合并。
+- 分支名统一使用拼音而非中文，避免 Windows 中文终端下出现乱码分支。
 
 ### 2. 代码规范
 
@@ -128,6 +132,8 @@ git push                          # ② 收工前推送到远程
 
 ```
 zuoye/
+├── docs/
+│   └── 队友开发手册.md          队友上手指南（重要）
 ├── public/                     静态资源
 ├── src/
 │   ├── assets/styles/
@@ -169,6 +175,7 @@ zuoye/
 - [x] 全局样式变量与代码规范
 - [x] 工作台首页
 - [x] 公告通知页面
-- [ ] 请假申请页面（罗欣雨）
-- [ ] 待办事项页面（张晶）
+- [x] 队友分支创建与开发手册编写
+- [ ] 请假申请页面（罗欣雨，`feature/luo-xinyu`）
+- [ ] 待办事项页面（张晶，`feature/zhang-jing`）
 - [ ] 后端接口对接

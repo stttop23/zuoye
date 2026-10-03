@@ -9,20 +9,28 @@
             负责开发，当前是占位页面。
           </p>
           <p>
-            请你新建分支
-            <code>feature/罗欣雨</code>
-            ，把本文件内容替换成真实页面。
+            你的开发分支是
+            <code>feature/luo-xinyu</code>
+            ，要改的文件只有
+            <code>src/views/LeaveView.vue</code>
+            这一个。
+          </p>
+          <p>
+            完整操作步骤见
+            <code>docs/队友开发手册.md</code>
           </p>
         </template>
 
         <template #extra>
           <el-descriptions :column="1" border size="small" class="tip">
-            <el-descriptions-item label="文件位置">src/views/LeaveView.vue</el-descriptions-item>
+            <el-descriptions-item label="切换分支">
+              git checkout feature/luo-xinyu
+            </el-descriptions-item>
             <el-descriptions-item label="访问地址">
               http://localhost:5173/leave
             </el-descriptions-item>
-            <el-descriptions-item label="建议实现">
-              el-form 请假单 + el-table 请假记录 + el-dialog 详情
+            <el-descriptions-item label="参考实现">
+              切到你的分支后，这里会有一份能直接跑起来的请假页示例
             </el-descriptions-item>
           </el-descriptions>
         </template>
@@ -32,7 +40,8 @@
 </template>
 
 <script setup>
-// 占位页：队友开发完成后直接覆盖本文件即可，路由已配好，不需要改 router。
+// 占位页：切到 feature/luo-xinyu 分支后这里会替换成完整的请假页示例。
+// 路由已配好，不需要改 router。
 </script>
 
 <style scoped>
