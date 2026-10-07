@@ -3,9 +3,9 @@
     <!-- ==================== 欢迎条 ==================== -->
     <el-card shadow="never" class="welcome">
       <div class="welcome__inner">
-        <el-avatar :size="56" class="welcome__avatar">刘</el-avatar>
+        <el-avatar :size="56" class="welcome__avatar">{{ userInitial }}</el-avatar>
         <div>
-          <h2 class="welcome__title">欢迎来到工作台，刘皖</h2>
+          <h2 class="welcome__title">欢迎来到工作台，{{ userName }}</h2>
           <p class="welcome__desc">{{ todayText }} · 今天也要元气满满哦</p>
         </div>
       </div>
@@ -89,8 +89,10 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Bell, Document, List, Refresh, User, Warning } from '@element-plus/icons-vue'
+import { useUserProfile } from '@/composables/userProfile'
 
 const router = useRouter()
+const { userName, userInitial } = useUserProfile()
 
 /** 假数据：统计数据 */
 const data = ref({

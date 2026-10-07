@@ -188,9 +188,11 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserProfile } from '@/composables/userProfile'
 
 const categories = ['工作', '活动', '学习', '文档', '其他']
-const assignees = ['刘皖', '张晶', '罗欣雨']
+const { userName } = useUserProfile()
+const assignees = computed(() => [...new Set([userName.value, '张晶', '罗欣雨'])])
 const editableStatuses = ['待办', '进行中', '已完成']
 const statusFilters = ['全部', ...editableStatuses]
 const priorityTagMap = { 高: 'danger', 中: 'warning', 低: 'info' }
@@ -203,7 +205,7 @@ const todos = ref([
     description: '汇总各部门工作成果、存在问题和下学期计划。',
     category: '文档',
     priority: '高',
-    assignee: '刘皖',
+    assignee: userName.value,
     dueDate: '2026-10-15',
     status: '待办',
   },
@@ -243,7 +245,7 @@ const todos = ref([
     description: '收集本周各部门进展，整理议题。',
     category: '工作',
     priority: '中',
-    assignee: '刘皖',
+    assignee: userName.value,
     dueDate: '2026-10-09',
     status: '进行中',
   },
@@ -276,12 +278,19 @@ const createEmptyForm = () => ({
   description: '',
   category: '',
   priority: '中',
-  assignee: '张晶',
+  assignee: userName.value,
   dueDate: '',
   status: '待办',
 })
 
 const todoForm = reactive(createEmptyForm())
+
+watch(userName, (name, previousName) => {
+  todos.value.forEach((todo) => {
+    if (todo.assignee === previousName) todo.assignee = name
+  })
+  if (todoForm.assignee === previousName) todoForm.assignee = name
+})
 
 const rules = {
   title: [

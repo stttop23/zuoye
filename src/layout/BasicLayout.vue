@@ -36,8 +36,13 @@
         </div>
 
         <div class="layout__header-right">
-          <el-tag type="info" effect="plain" round>前端开发：刘皖</el-tag>
-          <el-avatar :size="32" class="layout__avatar">刘</el-avatar>
+          <el-tooltip content="修改显示名称">
+            <el-button text class="profile-button" @click="openProfileDialog">
+              <el-avatar :size="32" class="layout__avatar">{{ userInitial }}</el-avatar>
+              <span class="profile-name">{{ userName }}</span>
+              <el-icon><Edit /></el-icon>
+            </el-button>
+          </el-tooltip>
         </div>
       </el-header>
 
@@ -50,18 +55,49 @@
         </router-view>
       </el-main>
     </el-container>
+
+    <el-dialog v-model="profileDialogVisible" title="修改显示名称" width="420px">
+      <el-form ref="profileFormRef" :model="profileForm" :rules="profileRules" @submit.prevent>
+        <el-form-item label="显示名称" prop="name">
+          <el-input
+            v-model="profileForm.name"
+            maxlength="20"
+            show-word-limit
+            autofocus
+            placeholder="输入你的名称"
+            @keyup.enter="saveProfile"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="profileDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveProfile">保存</el-button>
+      </template>
+    </el-dialog>
   </el-container>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { Bell, Document, Expand, Fold, HomeFilled, List, School } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { Bell, Document, Edit, Expand, Fold, HomeFilled, List, School } from '@element-plus/icons-vue'
+import { useUserProfile } from '@/composables/userProfile'
 
 const route = useRoute()
+const { userName, userInitial } = useUserProfile()
 
 /** 侧边栏折叠状态 */
 const isCollapse = ref(false)
+const profileDialogVisible = ref(false)
+const profileFormRef = ref()
+const profileForm = reactive({ name: userName.value })
+const profileRules = {
+  name: [
+    { required: true, whitespace: true, message: '请输入显示名称', trigger: 'blur' },
+    { max: 20, message: '名称不能超过 20 个字符', trigger: 'blur' },
+  ],
+}
 
 /** 菜单项：队友新增页面时，只需在这里加一行 */
 const menus = [
@@ -73,6 +109,23 @@ const menus = [
 
 /** 面包屑第二级标题，直接读路由 meta */
 const currentTitle = computed(() => route.meta?.title ?? '')
+
+function openProfileDialog() {
+  profileForm.name = userName.value
+  profileDialogVisible.value = true
+}
+
+async function saveProfile() {
+  try {
+    await profileFormRef.value.validate()
+  } catch {
+    return
+  }
+
+  userName.value = profileForm.name.trim()
+  profileDialogVisible.value = false
+  ElMessage.success('显示名称已更新')
+}
 </script>
 
 <style scoped>
@@ -141,6 +194,21 @@ const currentTitle = computed(() => route.meta?.title ?? '')
 
 .layout__avatar {
   background: var(--st-primary);
+}
+
+.profile-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--st-gap-sm);
+  height: 40px;
+  color: var(--st-text-regular);
+}
+
+.profile-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- 内容区 ---------- */

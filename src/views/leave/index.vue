@@ -123,12 +123,12 @@
  * ⚠️ 说明：本页数据为「假数据」，目的是让前端页面先跑起来。
  * 后端接口就绪后，把 records 换成接口请求、提交改成调接口即可。
  */
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Refresh } from '@element-plus/icons-vue'
+import { useUserProfile } from '@/composables/userProfile'
 
-/** ⚠️ 当前登录用户。现在写死，接入登录后从 store 或接口读取 */
-const currentUser = ref({ name: '刘皖' })
+const { userName } = useUserProfile()
 
 const typeTagMap = { 事假: 'primary', 病假: 'warning', 年假: 'success' }
 const statusTagMap = { 待审批: 'warning', 已通过: 'success', 已驳回: 'danger' }
@@ -138,7 +138,7 @@ const formRef = ref()
 const submitting = ref(false)
 
 const createEmptyForm = () => ({
-  name: currentUser.value.name,
+  name: userName.value,
   type: '',
   startTime: '',
   endTime: '',
@@ -146,6 +146,10 @@ const createEmptyForm = () => ({
 })
 
 const leaveForm = reactive(createEmptyForm())
+
+watch(userName, (name) => {
+  leaveForm.name = name
+})
 
 /** 结束时间不能早于开始时间 */
 function validateEndTime(rule, value, callback) {
