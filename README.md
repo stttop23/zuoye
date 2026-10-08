@@ -132,7 +132,7 @@ git push                          # ② 收工前推送到远程
 
 ```
 zuoye/
-├── 刘皖/                       ★ 刘皖负责的页面
+├── liuwan/                     ★ 刘皖负责的页面
 │   └── views/
 │       ├── dashboard/          工作台首页
 │       │   ├── index.vue         页面主体：欢迎条 + 组装子组件
@@ -141,11 +141,11 @@ zuoye/
 │       │   ├── index.vue         页面主体：页头 + 组装子组件
 │       │   └── components/       NoticeFilter / NoticeTable / NoticeDetailDialog
 │       └── NotFoundView.vue    404 页面
-├── 罗欣雨/                     ★ 罗欣雨负责的页面
+├── luoxinyu/                   ★ 罗欣雨负责的页面
 │   └── views/leave/
 │       ├── index.vue             请假申请：组装子组件 + 假数据
 │       └── components/           LeaveForm（表单+校验）/ LeaveRecords（记录表）
-├── 张晶/                       ★ 张晶负责的页面
+├── zhangjing/                  ★ 张晶负责的页面
 │   └── views/todo/
 │       ├── index.vue             待办事项：表格 + 分页 + 组装子组件
 │       └── components/           TodoStats / TodoToolbar / TodoDialog
@@ -172,6 +172,9 @@ zuoye/
 > **拆分约定**：每个页面都是一个文件夹，`index.vue` 只做「组装」，
 > 具体的表格、表单、弹窗放到同级的 `components/` 里。
 > 改一个页面不会碰到别人的代码。
+>
+> 文件夹名用**拼音**（`liuwan` / `luoxinyu` / `zhangjing`）而不是中文，
+> 和分支命名一个道理：中文路径在 Windows 终端里会显示成乱码。
 
 ## 八、项目截图
 
