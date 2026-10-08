@@ -14,25 +14,26 @@ const routes = [
       {
         path: 'dashboard',
         name: 'Dashboard',
-        component: () => import('@/views/dashboard/index.vue'),
+        // 按人分目录：页面源码在仓库根目录下各自的文件夹里
+        component: () => import('../../刘皖/views/dashboard/index.vue'),
         meta: { title: '工作台', icon: 'HomeFilled' },
       },
       {
         path: 'notice',
         name: 'Notice',
-        component: () => import('@/views/notice/index.vue'),
+        component: () => import('../../刘皖/views/notice/index.vue'),
         meta: { title: '公告通知', icon: 'Bell' },
       },
       {
         path: 'leave',
         name: 'Leave',
-        component: () => import('@/views/leave/index.vue'),
+        component: () => import('../../罗欣雨/views/leave/index.vue'),
         meta: { title: '请假申请', icon: 'Document' },
       },
       {
         path: 'todo',
         name: 'Todo',
-        component: () => import('@/views/todo/index.vue'),
+        component: () => import('../../张晶/views/todo/index.vue'),
         meta: { title: '待办事项', icon: 'List' },
       },
     ],
@@ -40,7 +41,7 @@ const routes = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    component: () => import('@/views/NotFoundView.vue'),
+    component: () => import('../../刘皖/views/NotFoundView.vue'),
     meta: { title: '页面不存在' },
   },
 ]

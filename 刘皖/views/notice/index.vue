@@ -12,109 +12,31 @@
       </el-button>
     </div>
 
-    <!-- ==================== 搜索栏 ==================== -->
-    <el-card shadow="never" class="section">
-      <el-form :inline="true" @submit.prevent>
-        <el-form-item label="关键词">
-          <el-input
-            v-model="keyword"
-            placeholder="搜索公告标题或发布人"
-            clearable
-            style="width: 260px"
-            @keyup.enter="handleSearch"
-            @clear="handleSearch"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
+    <!-- ==================== 搜索栏（子组件） ==================== -->
+    <NoticeFilter
+      v-model:keyword="keyword"
+      v-model:typeFilter="typeFilter"
+      @search="handleSearch"
+      @reset="handleReset"
+    />
 
-        <el-form-item label="类型">
-          <el-select v-model="typeFilter" placeholder="全部类型" clearable style="width: 140px">
-            <el-option label="通知" value="通知" />
-            <el-option label="活动" value="活动" />
-            <el-option label="制度" value="制度" />
-          </el-select>
-        </el-form-item>
+    <!-- ==================== 表格 + 分页（子组件） ==================== -->
+    <NoticeTable
+      v-model:currentPage="currentPage"
+      v-model:pageSize="pageSize"
+      :list="pagedList"
+      :total="filteredList.length"
+      :loading="loading"
+      @detail="openDetail"
+      @size-change="handleSizeChange"
+    />
 
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>
-            搜索
-          </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <!-- ==================== 表格 ==================== -->
-    <el-card shadow="never" class="section">
-      <el-table v-loading="loading" :data="pagedList" stripe style="width: 100%">
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="title" label="公告标题" min-width="240" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span class="notice__title" @click="openDetail(row)">{{ row.title }}</span>
-            <el-tag v-if="row.top" type="danger" size="small" effect="light" class="notice__top">
-              置顶
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="type" label="类型" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="typeTagMap[row.type]" size="small" effect="plain">{{ row.type }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="author" label="发布人" width="120" align="center" />
-        <el-table-column prop="publishTime" label="发布时间" width="180" align="center" />
-        <el-table-column label="操作" width="160" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="openDetail(row)">
-              <el-icon><View /></el-icon>
-              查看详情
-            </el-button>
-          </template>
-        </el-table-column>
-
-        <template #empty>
-          <el-empty description="没有找到符合条件的公告" />
-        </template>
-      </el-table>
-
-      <!-- ==================== 分页 ==================== -->
-      <div class="pagination">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[5, 10, 20]"
-          :total="filteredList.length"
-          layout="total, sizes, prev, pager, next, jumper"
-          background
-          @size-change="handleSizeChange"
-        />
-      </div>
-    </el-card>
-
-    <!-- ==================== 详情弹窗 ==================== -->
-    <el-dialog v-model="dialogVisible" :title="currentNotice?.title" width="640px">
-      <el-descriptions :column="2" border size="default">
-        <el-descriptions-item label="发布人">{{ currentNotice?.author }}</el-descriptions-item>
-        <el-descriptions-item label="类型">{{ currentNotice?.type }}</el-descriptions-item>
-        <el-descriptions-item label="发布时间" :span="2">
-          {{ currentNotice?.publishTime }}
-        </el-descriptions-item>
-      </el-descriptions>
-
-      <div class="notice__content">{{ currentNotice?.content }}</div>
-
-      <template #footer>
-        <el-button @click="dialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="onConfirmRead">我已知晓</el-button>
-      </template>
-    </el-dialog>
+    <!-- ==================== 详情弹窗（子组件） ==================== -->
+    <NoticeDetailDialog
+      v-model="dialogVisible"
+      :notice="currentNotice"
+      @confirm-read="onConfirmRead"
+    />
   </div>
 </template>
 
@@ -123,13 +45,16 @@
  * ⚠️ 说明：本页数据为「假数据」，目的是让前端页面先跑起来。
  * 后端接口就绪后，把 allNotices 换成接口请求即可。
  * 分页是前端分页（先把全部数据过滤，再切片），数据量大时要改成后端分页。
+ *
+ * 本页已拆成三个子组件，都在 ./components/ 下：
+ * NoticeFilter（搜索栏）、NoticeTable（表格+分页）、NoticeDetailDialog（详情弹窗）
  */
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, Refresh, Search, View } from '@element-plus/icons-vue'
-
-/** 类型 -> 标签颜色 */
-const typeTagMap = { 通知: 'primary', 活动: 'success', 制度: 'warning' }
+import { Plus } from '@element-plus/icons-vue'
+import NoticeFilter from './components/NoticeFilter.vue'
+import NoticeTable from './components/NoticeTable.vue'
+import NoticeDetailDialog from './components/NoticeDetailDialog.vue'
 
 /** ---------- 假数据 ---------- */
 const allNotices = ref([
@@ -330,40 +255,5 @@ function onPublish() {
   justify-content: space-between;
 }
 
-.section {
-  border: none;
-}
-
-.section :deep(.el-form-item) {
-  margin-bottom: 0;
-}
-
-.notice__title {
-  color: var(--st-text-primary);
-  cursor: pointer;
-}
-
-.notice__title:hover {
-  color: var(--st-primary);
-}
-
-.notice__top {
-  margin-left: 8px;
-}
-
-.notice__content {
-  margin-top: var(--st-gap-base);
-  padding: var(--st-gap-base);
-  font-size: 14px;
-  line-height: 1.8;
-  color: var(--st-text-regular);
-  background: var(--st-bg-page);
-  border-radius: var(--st-radius-sm);
-}
-
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: var(--st-gap-base);
-}
+/* 搜索栏、表格、弹窗的样式已随子组件移走，见 ./components/ */
 </style>

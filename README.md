@@ -132,29 +132,46 @@ git push                          # ② 收工前推送到远程
 
 ```
 zuoye/
-├── docs/
-│   └── 项目框架.md             架构与分工说明
-├── src/
+├── 刘皖/                       ★ 刘皖负责的页面
+│   └── views/
+│       ├── dashboard/          工作台首页
+│       │   ├── index.vue         页面主体：欢迎条 + 组装子组件
+│       │   └── components/       StatCards / QuickActions / RecentNotices
+│       ├── notice/             公告通知
+│       │   ├── index.vue         页面主体：页头 + 组装子组件
+│       │   └── components/       NoticeFilter / NoticeTable / NoticeDetailDialog
+│       └── NotFoundView.vue    404 页面
+├── 罗欣雨/                     ★ 罗欣雨负责的页面
+│   └── views/leave/
+│       ├── index.vue             请假申请：组装子组件 + 假数据
+│       └── components/           LeaveForm（表单+校验）/ LeaveRecords（记录表）
+├── 张晶/                       ★ 张晶负责的页面
+│   └── views/todo/
+│       ├── index.vue             待办事项：表格 + 分页 + 组装子组件
+│       └── components/           TodoStats / TodoToolbar / TodoDialog
+├── src/                        应用外壳（三个页面共用，不属于某个人）
 │   ├── assets/styles/
 │   │   ├── variables.css       全局颜色 / 间距变量（全组统一，禁止写死色值）
 │   │   └── global.css          全局基础样式
+│   ├── composables/
+│   │   └── userProfile.js      当前用户显示名称（localStorage 持久化）
 │   ├── layout/
 │   │   └── BasicLayout.vue     整体布局：侧边栏 + 顶栏 + 面包屑 + 内容区
 │   ├── router/
 │   │   └── index.js            路由表（刘皖统一维护）
-│   ├── views/                  ★ 一人一个文件夹，互不干扰
-│   │   ├── dashboard/index.vue 工作台首页   （刘皖）
-│   │   ├── notice/index.vue    公告通知    （刘皖）
-│   │   ├── leave/index.vue     请假申请    （罗欣雨 · 占位中）
-│   │   ├── todo/index.vue      待办事项    （张晶 · 占位中）
-│   │   └── NotFoundView.vue    404 页面
 │   ├── App.vue
 │   └── main.js                 入口：Element Plus、路由、全局样式
+├── docs/
+│   └── 项目框架.md             架构与分工说明
 ├── .prettierrc.json            格式化规则
 ├── index.html
 ├── vite.config.js
 └── package.json
 ```
+
+> **拆分约定**：每个页面都是一个文件夹，`index.vue` 只做「组装」，
+> 具体的表格、表单、弹窗放到同级的 `components/` 里。
+> 改一个页面不会碰到别人的代码。
 
 ## 八、项目截图
 
@@ -172,10 +189,12 @@ zuoye/
 - [x] 项目初始化与依赖配置
 - [x] 整体布局与路由框架
 - [x] 全局样式变量与代码规范
-- [x] 工作台首页
-- [x] 公告通知页面
+- [x] 工作台首页（刘皖）
+- [x] 公告通知页面（刘皖）
 - [x] 按成员划分独立模块文件夹
 - [x] 队友开发分支创建（`feature/luo-xinyu`、`feature/zhang-jing`）
-- [ ] 请假申请页面（罗欣雨）
-- [ ] 待办事项页面（张晶）
+- [x] 请假申请页面（罗欣雨）
+- [x] 待办事项页面（张晶）
+- [x] 自定义用户显示名称（张晶）
+- [x] 按人重组目录 + 页面拆分子组件
 - [ ] 后端接口对接

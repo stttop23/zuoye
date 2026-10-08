@@ -11,52 +11,18 @@
       </el-button>
     </header>
 
-    <section class="summary-grid" aria-label="待办统计">
-      <div class="summary-item">
-        <span class="summary-label">全部事项</span>
-        <strong class="summary-value">{{ stats.total }}</strong>
-      </div>
-      <div class="summary-item">
-        <span class="summary-label">待办</span>
-        <strong class="summary-value summary-value--info">{{ stats.pending }}</strong>
-      </div>
-      <div class="summary-item">
-        <span class="summary-label">进行中</span>
-        <strong class="summary-value summary-value--warning">{{ stats.ongoing }}</strong>
-      </div>
-      <div class="summary-item">
-        <span class="summary-label">已完成</span>
-        <strong class="summary-value summary-value--success">{{ stats.completed }}</strong>
-      </div>
-    </section>
+    <!-- ==================== 统计条（子组件） ==================== -->
+    <TodoStats :stats="stats" />
 
     <el-card shadow="never" class="section">
-      <div class="filter-toolbar">
-        <el-input
-          v-model="keyword"
-          clearable
-          placeholder="搜索任务、负责人或描述"
-          class="search-input"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
-        <el-select v-model="priorityFilter" clearable placeholder="全部优先级" class="filter-select">
-          <el-option label="高优先级" value="高" />
-          <el-option label="中优先级" value="中" />
-          <el-option label="低优先级" value="低" />
-        </el-select>
-        <el-select v-model="categoryFilter" clearable placeholder="全部分类" class="filter-select">
-          <el-option v-for="item in categories" :key="item" :label="item" :value="item" />
-        </el-select>
-      </div>
-
-      <el-radio-group v-model="statusFilter" class="status-tabs">
-        <el-radio-button v-for="item in statusFilters" :key="item" :value="item">
-          {{ item }}
-        </el-radio-button>
-      </el-radio-group>
+      <!-- ==================== 筛选栏（子组件） ==================== -->
+      <TodoToolbar
+        v-model:keyword="keyword"
+        v-model:statusFilter="statusFilter"
+        v-model:priorityFilter="priorityFilter"
+        v-model:categoryFilter="categoryFilter"
+        :categories="categories"
+      />
 
       <el-table :data="pagedTodos" stripe style="width: 100%">
         <el-table-column label="任务" min-width="250">
@@ -124,79 +90,44 @@
       </div>
     </el-card>
 
-    <el-dialog
+    <!-- ==================== 新建 / 编辑弹窗（子组件） ==================== -->
+    <TodoDialog
       v-model="dialogVisible"
-      :title="dialogMode === 'create' ? '新建待办' : '编辑待办'"
-      width="520px"
-      class="todo-dialog"
-      @closed="clearForm"
-    >
-      <el-form ref="formRef" :model="todoForm" :rules="rules" label-width="84px">
-        <el-form-item label="任务名称" prop="title">
-          <el-input v-model="todoForm.title" maxlength="40" show-word-limit placeholder="填写任务名称" />
-        </el-form-item>
-        <el-form-item label="任务描述" prop="description">
-          <el-input
-            v-model="todoForm.description"
-            type="textarea"
-            :rows="3"
-            maxlength="200"
-            show-word-limit
-            placeholder="补充任务说明"
-          />
-        </el-form-item>
-        <el-form-item label="分类" prop="category">
-          <el-select v-model="todoForm.category" placeholder="选择分类" class="full-width">
-            <el-option v-for="item in categories" :key="item" :label="item" :value="item" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="优先级" prop="priority">
-          <el-select v-model="todoForm.priority" placeholder="选择优先级" class="full-width">
-            <el-option label="高" value="高" />
-            <el-option label="中" value="中" />
-            <el-option label="低" value="低" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="负责人" prop="assignee">
-          <el-select v-model="todoForm.assignee" placeholder="选择负责人" class="full-width">
-            <el-option v-for="item in assignees" :key="item" :label="item" :value="item" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="截止日期" prop="dueDate">
-          <el-date-picker
-            v-model="todoForm.dueDate"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="选择截止日期"
-            class="full-width"
-          />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="todoForm.status" class="full-width">
-            <el-option v-for="item in editableStatuses" :key="item" :label="item" :value="item" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="saveTodo">保存</el-button>
-      </template>
-    </el-dialog>
+      :mode="dialogMode"
+      :categories="categories"
+      :assignees="assignees"
+      :editable-statuses="editableStatuses"
+      :initial="dialogInitial"
+      @save="onSave"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+/**
+ * ⚠️ 说明：本页数据为「假数据」，目的是让前端页面先跑起来。
+ * 后端接口就绪后，把 todos 换成接口请求即可。
+ * 分页是前端分页（先过滤再切片），数据量大时要改成后端分页。
+ *
+ * 本页已拆成三个子组件，都在 ./components/ 下：
+ * TodoStats（统计条）、TodoToolbar（筛选栏）、TodoDialog（新建/编辑弹窗）
+ */
+import { computed, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserProfile } from '@/composables/userProfile'
+import TodoStats from './components/TodoStats.vue'
+import TodoToolbar from './components/TodoToolbar.vue'
+import TodoDialog from './components/TodoDialog.vue'
 
 const categories = ['工作', '活动', '学习', '文档', '其他']
-const { userName } = useUserProfile()
-const assignees = computed(() => [...new Set([userName.value, '张晶', '罗欣雨'])])
 const editableStatuses = ['待办', '进行中', '已完成']
-const statusFilters = ['全部', ...editableStatuses]
 const priorityTagMap = { 高: 'danger', 中: 'warning', 低: 'info' }
 const statusTagMap = { 待办: 'info', 进行中: 'warning', 已完成: 'success' }
+
+const { userName } = useUserProfile()
+
+// 负责人下拉：当前的显示名称 + 其他组员，去重
+const assignees = computed(() => [...new Set([userName.value, '张晶', '罗欣雨'])])
 
 const todos = ref([
   {
@@ -261,47 +192,13 @@ const todos = ref([
   },
 ])
 
+/** ---------- 筛选 + 分页 ---------- */
 const keyword = ref('')
 const statusFilter = ref('全部')
 const priorityFilter = ref('')
 const categoryFilter = ref('')
 const currentPage = ref(1)
 const pageSize = ref(5)
-const dialogVisible = ref(false)
-const dialogMode = ref('create')
-const saving = ref(false)
-const formRef = ref()
-const editingId = ref(null)
-
-const createEmptyForm = () => ({
-  title: '',
-  description: '',
-  category: '',
-  priority: '中',
-  assignee: userName.value,
-  dueDate: '',
-  status: '待办',
-})
-
-const todoForm = reactive(createEmptyForm())
-
-watch(userName, (name, previousName) => {
-  todos.value.forEach((todo) => {
-    if (todo.assignee === previousName) todo.assignee = name
-  })
-  if (todoForm.assignee === previousName) todoForm.assignee = name
-})
-
-const rules = {
-  title: [
-    { required: true, message: '请填写任务名称', trigger: 'blur' },
-    { min: 2, max: 40, message: '任务名称需为 2 到 40 个字', trigger: 'blur' },
-  ],
-  category: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  priority: [{ required: true, message: '请选择优先级', trigger: 'change' }],
-  assignee: [{ required: true, message: '请选择负责人', trigger: 'change' }],
-  dueDate: [{ required: true, message: '请选择截止日期', trigger: 'change' }],
-}
 
 const stats = computed(() => ({
   total: todos.value.length,
@@ -335,50 +232,47 @@ watch([keyword, statusFilter, priorityFilter, categoryFilter], () => {
   currentPage.value = 1
 })
 
+// 顶栏改了显示名称后，把原本挂在自己名下的任务一起改过来
+watch(userName, (name, previousName) => {
+  todos.value.forEach((todo) => {
+    if (todo.assignee === previousName) todo.assignee = name
+  })
+})
+
 function isOverdue(todo) {
   return todo.status !== '已完成' && todo.dueDate < new Date().toLocaleDateString('en-CA')
 }
 
+/** ---------- 新建 / 编辑 ---------- */
+const dialogVisible = ref(false)
+const dialogMode = ref('create')
+const dialogInitial = ref(null)
+const editingId = ref(null)
+
 function openCreate() {
   dialogMode.value = 'create'
   editingId.value = null
-  Object.assign(todoForm, createEmptyForm())
+  dialogInitial.value = null
   dialogVisible.value = true
-  nextTick(() => formRef.value?.clearValidate())
 }
 
 function openEdit(todo) {
   dialogMode.value = 'edit'
   editingId.value = todo.id
-  Object.assign(todoForm, { ...todo })
+  dialogInitial.value = { ...todo }
   dialogVisible.value = true
-  nextTick(() => formRef.value?.clearValidate())
 }
 
-function clearForm() {
-  formRef.value?.clearValidate()
-  Object.assign(todoForm, createEmptyForm())
-}
-
-async function saveTodo() {
-  try {
-    await formRef.value.validate()
-  } catch {
-    return
-  }
-
-  saving.value = true
-  const savedTodo = { ...todoForm }
+/** 弹窗校验通过后抛上来，这里只负责写进列表 */
+function onSave(payload) {
   if (dialogMode.value === 'edit') {
     const index = todos.value.findIndex((item) => item.id === editingId.value)
-    if (index !== -1) todos.value[index] = { ...todos.value[index], ...savedTodo }
+    if (index !== -1) todos.value[index] = { ...todos.value[index], ...payload }
     ElMessage.success('待办已更新')
   } else {
-    todos.value.unshift({ id: Date.now(), ...savedTodo })
+    todos.value.unshift({ id: Date.now(), ...payload })
     ElMessage.success('待办已创建')
   }
-  saving.value = false
-  dialogVisible.value = false
   currentPage.value = 1
 }
 
@@ -430,67 +324,8 @@ async function deleteTodo(todo) {
   font-size: 13px;
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--st-gap-base);
-}
-
-.summary-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 72px;
-  padding: 0 var(--st-gap-base);
-  border: 1px solid var(--st-border-color-light);
-  border-radius: var(--st-radius-base);
-  background: var(--st-bg-card);
-}
-
-.summary-label {
-  color: var(--st-text-secondary);
-  font-size: 14px;
-}
-
-.summary-value {
-  color: var(--st-text-primary);
-  font-size: 24px;
-  line-height: 1;
-}
-
-.summary-value--info {
-  color: var(--st-info);
-}
-
-.summary-value--warning {
-  color: var(--st-warning);
-}
-
-.summary-value--success {
-  color: var(--st-success);
-}
-
 .section {
   border: none;
-}
-
-.filter-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: var(--st-gap-base);
-}
-
-.search-input {
-  width: min(320px, 100%);
-}
-
-.filter-select {
-  width: 150px;
-}
-
-.status-tabs {
-  margin-bottom: var(--st-gap-base);
 }
 
 .task-title {
@@ -522,32 +357,11 @@ async function deleteTodo(todo) {
   padding-top: var(--st-gap-base);
 }
 
-.full-width {
-  width: 100%;
-}
-
-.todo-dialog {
-  max-width: 92vw;
-}
+/* 统计条、筛选栏、弹窗的样式已随子组件移走，见 ./components/ */
 
 @media (max-width: 760px) {
   .page-head {
     align-items: flex-start;
-  }
-
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--st-gap-sm);
-  }
-
-  .summary-item {
-    min-height: 64px;
-    padding: 0 12px;
-  }
-
-  .search-input,
-  .filter-select {
-    width: 100%;
   }
 
   .pagination {
