@@ -46,11 +46,26 @@
           type="textarea"
           :rows="2"
           resize="none"
-          placeholder="说一句话，比如：下周三到周五请病假"
+          :placeholder="listening ? '正在听……说完点「停止」' : '说一句话，比如：下周三到周五请病假'"
           @keydown.enter.exact.prevent="submit"
         />
         <div class="ai-chat__actions">
-          <el-button link @click="resetAgent">清空</el-button>
+          <div class="ai-chat__actions-left">
+            <el-tooltip :content="voiceTip" placement="top">
+              <el-button
+                link
+                :type="listening ? 'danger' : undefined"
+                :disabled="!voiceSupported"
+                @click="toggleVoice"
+              >
+                <el-icon class="ai-chat__mic" :class="{ 'is-listening': listening }">
+                  <Microphone />
+                </el-icon>
+                {{ listening ? '停止' : '语音' }}
+              </el-button>
+            </el-tooltip>
+            <el-button link @click="resetAgent">清空</el-button>
+          </div>
           <el-button type="primary" size="small" :loading="agentSending" @click="submit">
             发送
           </el-button>
@@ -66,10 +81,12 @@
  * 它只做三件事：把话发给 composable、把回答渲染出来、让用户点。
  * 「听懂」由后端负责，「填表」由页面负责，这里不掺和。
  */
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ChatDotRound } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { ChatDotRound, Microphone } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
+import { useSpeechInput } from '@/composables/useSpeechInput'
 import {
   agentMessages,
   agentSending,
@@ -91,6 +108,31 @@ const drawerVisible = ref(false)
 const draft = ref('')
 const listRef = ref()
 
+/* ---------- 语音输入 ---------- */
+// ⚠️ 用的是浏览器自带能力：只有 Chrome / Edge 有，而且【需要联网】
+// （音频会发到微软 / Google 的服务器，不是本机识别——详见 useSpeechInput.js 顶部说明）
+const {
+  supported: voiceSupported,
+  listening,
+  toggle: toggleVoiceRaw,
+  stop: stopVoice,
+} = useSpeechInput({
+  onText: (text) => {
+    draft.value = text
+  },
+  onError: (message) => ElMessage.warning(message),
+})
+
+const voiceTip = computed(() => {
+  if (!voiceSupported.value) return '当前浏览器不支持语音输入，换 Chrome 或 Edge'
+  return listening.value ? '点一下停止' : '点一下开始说话'
+})
+
+function toggleVoice() {
+  // 把输入框里已有的内容传进去，识别结果会接在它后面，不会覆盖
+  toggleVoiceRaw(draft.value)
+}
+
 // AI 填完表要自动收起抽屉：composable 发「关闭请求」过来，这里接住
 onAgentCloseRequest(() => {
   drawerVisible.value = false
@@ -111,6 +153,7 @@ const suggestions = [
 
 watch(drawerVisible, (open) => {
   if (open) scrollToBottom()
+  else stopVoice() // 抽屉关掉就把麦克风也放掉
 })
 watch(agentMessages, scrollToBottom, { deep: true })
 watch(agentSending, scrollToBottom)
@@ -125,6 +168,7 @@ function scrollToBottom() {
 function submit() {
   const content = draft.value.trim()
   if (!content || agentSending.value) return
+  stopVoice() // 还在说话就点了发送，先把麦克风关了
   draft.value = ''
   sendAgentMessage(content, { page: route.path, userName: userName.value })
 }
@@ -233,5 +277,26 @@ function useSuggestion(content) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.ai-chat__actions-left {
+  display: flex;
+  align-items: center;
+  gap: var(--st-gap-sm);
+}
+
+/* 正在听的时候让麦克风「呼吸」一下，答辩演示时一眼能看出来 */
+.ai-chat__mic.is-listening {
+  animation: ai-mic-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ai-mic-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 </style>
