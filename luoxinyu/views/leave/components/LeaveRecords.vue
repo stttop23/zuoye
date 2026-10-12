@@ -45,7 +45,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="applyTime" label="提交时间" width="170" align="center" />
-      <el-table-column label="操作" :width="isAdmin ? 170 : 90" align="center" fixed="right">
+      <el-table-column label="操作" :width="isAdmin ? 170 : 90" align="center">
         <template #default="{ row }">
           <template v-if="isAdmin && row.status === '待审批'">
             <el-button type="success" link @click="emit('review', row, '已通过')">通过</el-button>
