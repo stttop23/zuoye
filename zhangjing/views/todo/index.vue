@@ -218,7 +218,7 @@
  * 本页已拆成三个子组件，都在 ./components/ 下：
  * TodoStats（统计条）、TodoToolbar（筛选栏）、TodoDialog（新建/编辑弹窗）
  */
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, ArrowRight, Plus } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
@@ -465,7 +465,12 @@ watch(
     dialogMode.value = 'create'
     editingId.value = null
     dialogInitial.value = { ...fields }
-    dialogVisible.value = true
+    // ⚠️ 必须等这一帧渲染完再开弹窗，不能直接写 true：
+    // 如果是「跳页过来」的，本页这次是全新挂载，挂载当场就把 visible 置 true 的话，
+    // TodoDialog 内部那个 watch(visible)（非 immediate）永远不会触发，表单会是空的。
+    nextTick(() => {
+      dialogVisible.value = true
+    })
   },
   { immediate: true },
 )

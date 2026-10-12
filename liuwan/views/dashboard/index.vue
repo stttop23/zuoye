@@ -11,6 +11,9 @@
       </div>
     </el-card>
 
+    <!-- ==================== 每日打卡（子组件） ==================== -->
+    <CheckIn />
+
     <!-- ==================== 数据卡片（子组件） ==================== -->
     <StatCards :stats="stats" />
 
@@ -27,14 +30,15 @@
  * ⚠️ 当前全部使用「假数据」，前端可以独立开发。
  * 后端接口就绪后，把 data 换成 axios 请求即可，页面结构不用动。
  *
- * 本页已拆成三个子组件，都在 ./components/ 下：
- * StatCards（数据卡片）、QuickActions（快捷入口）、RecentNotices（最新公告）
+ * 本页已拆成四个子组件，都在 ./components/ 下：
+ * CheckIn（每日打卡）、StatCards（数据卡片）、QuickActions（快捷入口）、RecentNotices（最新公告）
  */
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, List, User, Warning } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
+import CheckIn from './components/CheckIn.vue'
 import StatCards from './components/StatCards.vue'
 import QuickActions from './components/QuickActions.vue'
 import RecentNotices from './components/RecentNotices.vue'

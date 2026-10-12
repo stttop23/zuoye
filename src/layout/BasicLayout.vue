@@ -36,6 +36,38 @@
         </div>
 
         <div class="layout__header-right">
+          <!-- 通知中心：小铃铛 + 未读红点 -->
+          <el-popover placement="bottom-end" :width="300" trigger="click" popper-class="notify-popper">
+            <template #reference>
+              <span class="layout__bell-btn">
+                <el-badge :value="unreadCount" :hidden="unreadCount === 0" :offset="[-2, 6]">
+                  <el-icon :size="18"><Bell /></el-icon>
+                </el-badge>
+              </span>
+            </template>
+
+            <div class="notify">
+              <div class="notify__head">
+                <span>通知</span>
+                <el-button v-if="unreadCount" link size="small" @click="markAllNotificationsRead">
+                  全部已读
+                </el-button>
+              </div>
+              <ul class="notify__list">
+                <li
+                  v-for="item in notifications"
+                  :key="item.id"
+                  :class="['notify__item', { 'notify__item--unread': !isNotificationRead(item.id) }]"
+                  @click="openNotification(item)"
+                >
+                  <div class="notify__title">{{ item.title }}</div>
+                  <div v-if="item.content" class="notify__content">{{ item.content }}</div>
+                  <div class="notify__time">{{ item.time }}</div>
+                </li>
+              </ul>
+            </div>
+          </el-popover>
+
           <el-select v-model="userRole" class="role-select" aria-label="切换用户身份">
             <el-option label="学生" value="student" />
             <el-option label="管理员" value="admin" />
@@ -86,14 +118,28 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Bell, Document, Edit, Expand, Fold, HomeFilled, List, School } from '@element-plus/icons-vue'
+import { Bell, ChatDotRound, Document, Edit, Expand, Fold, HomeFilled, List, School } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
+import {
+  isNotificationRead,
+  markAllNotificationsRead,
+  markNotificationRead,
+  notifications,
+  unreadCount,
+} from '@/composables/notifications'
 import AiAssistant from '@/components/AiAssistant.vue'
 
 const route = useRoute()
+const router = useRouter()
 const { userName, userInitial, userRole } = useUserProfile()
+
+/** 点通知：标记已读，并跳到对应页面 */
+function openNotification(item) {
+  markNotificationRead(item.id)
+  if (item.path) router.push(item.path)
+}
 
 /** 侧边栏折叠状态 */
 const isCollapse = ref(false)
@@ -109,6 +155,7 @@ const profileRules = {
 
 /** 菜单项：队友新增页面时，只需在这里加一行 */
 const menus = [
+  { path: '/assistant', title: 'AI 助手', icon: ChatDotRound },
   { path: '/dashboard', title: '工作台', icon: HomeFilled },
   { path: '/notice', title: '公告通知', icon: Bell },
   { path: '/leave', title: '请假申请', icon: Document },
@@ -223,9 +270,76 @@ async function saveProfile() {
   white-space: nowrap;
 }
 
+/* 铃铛外面套一层，把点击区域撑大一点，免得小红点挡住点不到 */
+.layout__bell-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 8px;
+  color: var(--st-text-regular);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.layout__bell-btn:hover {
+  color: var(--st-primary);
+  background: var(--st-bg-page);
+}
+
 /* ---------- 内容区 ---------- */
 .layout__main {
   padding: var(--st-gap-base);
   background: var(--st-bg-page);
+}
+</style>
+
+<!--
+  通知弹层被 teleport 到了 body，scoped 的样式够不到它，
+  所以单独写一段不加 scoped 的，用 popper-class="notify-popper" 圈住范围。
+-->
+<style>
+.notify__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  font-weight: 600;
+  color: var(--st-text-primary);
+}
+
+.notify__list {
+  max-height: 320px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.notify__item {
+  padding: 8px 10px;
+  margin: 0 -10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.notify__item:hover {
+  background: var(--st-bg-page);
+}
+
+/* 未读的左边有一小竖条 */
+.notify__item--unread {
+  border-left: 3px solid var(--st-primary);
+  padding-left: 8px;
+}
+
+.notify__title {
+  font-size: 14px;
+  color: var(--st-text-primary);
+}
+
+.notify__content,
+.notify__time {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--st-text-secondary);
 }
 </style>

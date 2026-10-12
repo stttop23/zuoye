@@ -36,6 +36,13 @@ const routes = [
         component: () => import('../../zhangjing/views/todo/index.vue'),
         meta: { title: '待办事项', icon: 'List' },
       },
+      {
+        path: 'assistant',
+        name: 'Assistant',
+        // AI 助手独立页面（抽屉里的那份聊天本体复用 AiChatPanel.vue）
+        component: () => import('../../liuwan/views/assistant/index.vue'),
+        meta: { title: 'AI 助手', icon: 'ChatDotRound' },
+      },
     ],
   },
   {

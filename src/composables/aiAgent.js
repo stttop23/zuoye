@@ -101,19 +101,41 @@ function pushReply(content, source) {
 }
 
 /**
+ * 每个「填表目标」对应的页面。
+ * 填完必须把用户带过去——否则他停在别的页面上，什么都看不见，
+ * 只会觉得「AI 什么都没干」。
+ */
+const FILL_TARGET_PAGES = {
+  leave: '/leave',
+  todo: '/todo',
+}
+
+/**
  * 执行动作清单。
- * 注意：这里【只会】填表 / 跳页，永远不会替用户点提交。
+ * 注意：这里【只会】填表和跳页，永远不会替用户点提交——跳过去就是为了让他确认。
  */
 function runActions(actions = []) {
   if (!Array.isArray(actions) || !actions.length) return
 
   let shouldClose = false
+  const jumped = new Set()
+
+  // 同一个页面只跳一次：模型可能既给 navigate 又给 fill，别跳两遍
+  function goTo(path) {
+    if (!path || jumped.has(path)) return
+    jumped.add(path)
+    if (router.currentRoute.value.path !== path) router.push(path)
+  }
+
   actions.forEach((action) => {
     if (action.type === 'navigate' && action.path) {
-      router.push(action.path)
+      goTo(action.path)
     } else if (action.type === 'fill' && action.target && action.fields) {
+      // 先放草稿、再跳页：
+      // 目标页面是挂载时才注册 watch（带 immediate），挂载时正好接住这份草稿
       pendingDraft.value = { target: action.target, fields: action.fields }
       shouldClose = true
+      goTo(FILL_TARGET_PAGES[action.target])
     }
   })
 

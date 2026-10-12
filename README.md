@@ -17,11 +17,16 @@
 | `今天到后天事假，回家办事` | 事假 + 日期 + 原因，一次填好 |
 | `新建待办：整理周例会材料，周五截止` | 打开新建弹窗并预填 |
 | `打开待办事项` | 跳转页面 |
+| `我有哪些待办` | 把待办念出来（含“已遍期”提醒） |
+| `我的请假批了吗` | 报请假记录的状态 |
+| `最近有什么公告` | 念最新的几条公告 |
 
 左下角还有个 **🎤 语音** 按钮——懒得打字就直接说话（仅 Chrome / Edge，需要联网）。
 说完文字会落到输入框，改完自己点发送，不会自动替你发。
 
 技术上是「工具调用」式智能体：模型只负责听懂和决策，真正动手的是后端白名单校验过的代码。
+六个工具：三个动手（跳页 / 填请假 / 建待办）+ 三个查数据（待办 / 公告 / 请假），
+后面的只读工具让 AI 从「会填表」变成「知道事」。
 模型跑在**你自己电脑上**（Ollama + `qwen2.5:7b`），不用联网、不用 API key、不花钱。
 
 模型或代理挂掉时会自动降级：**本机模型 → 后端正则规则 → 前端兜底**，演示现场不会哑火。
@@ -51,10 +56,11 @@
 
 ```
 /
-├── /dashboard   工作台首页（数据卡片 + 快捷入口 + 最新公告）
+├── /dashboard   工作台首页（打卡 + 数据卡片 + 快捷入口 + 最新公告）
 ├── /notice      公告通知（搜索 + 筛选 + 分页 + 详情弹窗）
 ├── /leave       请假申请（罗欣雨）
 ├── /todo        待办事项（张晶）
+├── /assistant   AI 助手（刘皖）
 └── /:pathMatch  404 页面
 ```
 
@@ -156,10 +162,12 @@ zuoye/
 │   └── views/
 │       ├── dashboard/          工作台首页
 │       │   ├── index.vue         页面主体：欢迎条 + 组装子组件
-│       │   └── components/       StatCards / QuickActions / RecentNotices
+│       │   └── components/       CheckIn / StatCards / QuickActions / RecentNotices
 │       ├── notice/             公告通知
 │       │   ├── index.vue         页面主体：页头 + 组装子组件
 │       │   └── components/       NoticeFilter / NoticeTable / NoticeDetailDialog
+│       ├── assistant/          AI 助手独立页面
+│       │   └── index.vue         复用 src/components/AiChatPanel.vue
 │       └── NotFoundView.vue    404 页面
 ├── luoxinyu/                   ★ 罗欣雨负责的页面
 │   └── views/leave/
@@ -176,10 +184,12 @@ zuoye/
 │   │   ├── variables.css       全局颜色 / 间距变量（全组统一，禁止写死色值）
 │   │   └── global.css          全局基础样式
 │   ├── components/
-│   │   └── AiAssistant.vue     右下角悬浮 AI 助手（全站常驻）
+│   │   ├── AiAssistant.vue     右下角悬浮入口（抽屉壳）
+│   │   └── AiChatPanel.vue     AI 聊天本体（抽屉和独立页面共用）
 │   ├── composables/
 │   │   ├── aiAgent.js          AI 对话状态 + 填表动作总线 + 本地兜底
 │   │   ├── useSpeechInput.js   语音输入（浏览器 Web Speech API 封装）
+│   │   ├── notifications.js    顶栏通知中心（未读数 + 已读状态）
 │   │   └── userProfile.js      当前用户显示名称（localStorage 持久化）
 │   ├── layout/
 │   │   └── BasicLayout.vue     整体布局：侧边栏 + 顶栏 + 面包屑 + 内容区
@@ -189,6 +199,7 @@ zuoye/
 │   └── main.js                 入口：Element Plus、路由、全局样式
 ├── server/                     AI 代理服务（Flask，调本机模型）
 │   ├── app.py                  工具定义 + 智能体循环 + 日期校正 + 本地规则兜底
+│   ├── mock_data.py            ⚠️ 临时假数据（只读工具查的就是它，接数据库后删）
 │   ├── requirements.txt
 │   ├── .env                    本机配置（已被 gitignore，不提交）
 │   └── .env.example            配置模板
@@ -234,8 +245,13 @@ zuoye/
 - [x] 自定义用户显示名称（张晶）
 - [x] 按人重组目录 + 页面拆分子组件
 - [x] AI 助手：询问 / 跳转 / 自然语言填表（刘皖）
+- [x] AI 助手独立页面（侧边栏入口，与悬浮抽屉共享同一份对话）
 - [x] AI 助手语音输入（浏览器 Web Speech API，仅 Chrome / Edge，需联网）
 - [x] 本机模型接入（Ollama + qwen2.5:7b，离线可用、不需要 key）
 - [x] AI 助手降级方案（本机模型 → 本地规则 → 前端兜底）
+- [x] AI 助手只读工具（查待办 / 查公告 / 查请假）
+- [x] 工作台每日打卡（带地理位置）
+- [x] 顶栏通知中心（未读红点 + 已读状态）
 - [ ] AI 代理部署到线上服务器
 - [ ] 后端接口对接
+- [ ] 把假数据换成数据库（前端 4 处 + `server/mock_data.py` 一起换）

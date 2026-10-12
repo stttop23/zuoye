@@ -39,6 +39,11 @@ except ImportError:
 
 app = Flask(__name__)
 
+try:  # 同目录下的临时假数据，为什么有这个东西见它自己的文件头
+    import mock_data
+except ImportError:  # 万一用 `python -m server.app` 启动
+    from server import mock_data
+
 # 本机模型（Ollama）：不用网、不用 key、不花钱
 OLLAMA_URL = os.getenv("OLLAMA_API_URL", "http://127.0.0.1:11434/v1/chat/completions")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
@@ -146,6 +151,66 @@ TOOLS = [
             },
         },
     },
+
+    # ---------------- 下面三个是【只读】工具：只查数据，不改任何东西 ----------------
+    # 它们让 AI 从「会填表」变成「知道事」。
+    {
+        "type": "function",
+        "function": {
+            "name": "list_todos",
+            "description": "查待办事项列表。用户问「我有哪些待办」「这周要做什么」「有什么逾期了」时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "assignee": {
+                        "type": "string",
+                        "description": "只在用户明确问别人（如「张晶的待办」）时才填姓名；问「我的」时【不要填】，更不要填「全部」",
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": list(TODO_STATUSES),
+                        "description": "只看某个状态，不填就不筛",
+                    },
+                    "overdue_only": {
+                        "type": "boolean",
+                        "description": "true 就只看已遍期的（过了截止日期且未完成）",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_notices",
+            "description": "查公告通知列表。用户问「最近有什么公告」「有没有活动通知」时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["通知", "活动", "制度"]},
+                    "keyword": {"type": "string", "description": "标题关键词，如「奖学金」"},
+                    "limit": {"type": "integer", "description": "最多返回几条，默认 3"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_leave_records",
+            "description": "查请假申请记录。用户问「我的请假批了吗」「我请过几次假」时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "只在用户明确问别人（如「张晶的请假」）时才填姓名；问「我的」时【不要填】",
+                    },
+                    "status": {"type": "string", "enum": ["待审批", "已通过", "已驳回"]},
+                },
+            },
+        },
+    },
 ]
 
 SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用户查东西和填表单。
@@ -153,13 +218,17 @@ SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用
 当前用户叫「{user}」，正停在「{page}」页面。
 
 {calendar}
-
+{data}
 你可以调用工具帮用户做事：
 - go_to_page：切换页面
 - fill_leave_form：把请假信息填进请假表单（只填、不提交）
 - create_todo：打开新建待办弹窗并预填
+- list_todos / list_notices / list_leave_records：查数据（只读，不会改任何东西）
 
-用户只是说「打开 / 去 / 看看 某个页面」时，用 go_to_page，不要顺便建任何东西。
+用户只是说「打开 / 去 / 进入 某个页面」时，只用 go_to_page，
+不要调只读工具、也不要建任何东西。注意这两句差别很大：
+  「打开公告」＝切到公告页，不是念一遍公告列表。
+  「有什么公告 / 公告都写了啥」才是查数据。
 
 硬性规则：
 1. 上面那张日期对照表是【算好的】，直接查表。绝对不要自己推算星期几，
@@ -171,7 +240,80 @@ SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用
 5. 填完表一定要提醒用户「自己看一眼再提交」。
 6. 调用工具前【不要】先写一段解释（小模型啰嗦一句就可能把输出额度吐光，
    导致工具参数被截断成残缺 JSON，服务端直接报错）。要调就安静地调。
-7. 回答用中文，40 字以内，不要用 markdown 标题和代码块，不要复述 JSON。"""
+7. 回答要短，不要有一句废话（这是聊天小气泡，长了很难看）：
+   - 只是确认 / 填表：一句话，25 字以内。
+   - 查数据：最多列 3 条，用「1. 2. 3.」列，多的说「还有 N 条」，不要写额外解释和客套。
+   不要用 markdown 标题和代码块，不要复述 JSON，不要重复用户已经知道的事。
+8. 用户问「我有哪些待办」「最近有什么公告」「我的请假批了吗」这类问题，
+   必须先调对应的只读工具把数据查出来再回答。绝对不能凭印象编一份列表。
+9. 只读工具返回的 items 是空的，就直说「没有」，不要自己补。
+   条数以工具返回的 count 为准，不要自己数。提到具体事项时最多提 3 条，多的就说「还有 N 条」。
+10. 问「我的」东西时，只读工具里【不要填人名】，让它默认查当前用户就行。
+    状态、日期、人名必须照抄工具返回的值，一个说法都不要自己改。"""
+
+# ⚠️ 维护提示：上面这段 SYSTEM_PROMPT 里【绝对不能出现任何具体业务值】。
+#    不能出现某个状态名、某个人名、某个理由，连「举例说明」都不行。
+#    踩过两次坑：
+#      1) 早期为了让模型理解 reason，提示词里写了「用户说『感冒发烧』」，
+#         结果模型把「感冒发烧」抄进了 answer，当成用户的请假原因。
+#      2) 为了说明别用别人的记录，提示词里举了一个状态名当反例，
+#         结果模型直接把这个状态名当成了查询结果 —— 实测 8 次错 8 次。
+#    小模型对提示词里的字面值没有「这是举例」的概念，只会照着抄。
+
+# 用户这句话像是在【下指令或问数据】，而不是纯闲聊。
+# 只有像下指令时才做「追问一次」的补救 —— 不然「你好」也会被逼着乱调工具。
+ACTION_HINT_RE = re.compile(
+    r"请假|病假|事假|年假|休假|待办|任务|事项|公告|通知|新建|添加|建个|加个|"
+    r"打开|进入|跳|帮我|查一|看一下|有哪些|多少|几条|批了吗|通过了吗|逾期"
+)
+
+NO_TOOL_MARK = "无需工具"
+
+# 追问用的提示词：给它一个台阶，别把「你好」也逼成乱调工具
+NUDGE_PROMPT = (
+    "停一下。你刚才没有调用任何工具就直接回答了 —— 如果用户是在下指令或问数据，"
+    "那个答案是编的，不允许。\n"
+    f"现在：需要动手或查数据，就立刻调用合适的工具；"
+    f"确实只是闲聊、什么工具都用不上，就只回复「{NO_TOOL_MARK}」这四个字。"
+)
+
+# 模型偶尔会把上面那段催办话原样吐给用户（实测出现过），这些词就是泄了
+LEAK_MARKS = ("停一下", "无需工具", "系统检查", "那个答案是编的")
+
+# 模型嘴上说「已经帮你做了 / 已经建好了」但一个动作都没产出 —— 它在撒谎。
+# 这种谎最坑：界面上什么都没发生，用户还以为做好了。
+CLAIM_RE = re.compile(
+    r"已经|已帮|已为|帮你|已填|填好|已新建|已创建|已添加|已切换|已打开|已做好|已提交"
+)
+
+
+def sanitize(reply, actions, user_text, page, read_result):
+    """
+    模型输出的最后一道体检。两种毛病都不认它那句，改走本地规则兜底：
+
+    1) 提示词泄漏：它把我们的催办话原样吐出来了（实测出现过）。
+    2) 谎报已做事：说「已经帮你建好了」，但 actions 是空的 —— 界面根本没反应。
+
+    只有本地规则【确实能产出动作】时才替换，否则保留模型的话。
+    这点很重要：问「我的请假批了吗」时模型也会说「已经查到了」，
+    这不是撒谎，本地规则又接不住，误伤就把对的答案换成了错的。
+    """
+    if actions or not reply:
+        return reply, actions
+
+    leaked = any(mark in reply for mark in LEAK_MARKS)
+    claimed = bool(CLAIM_RE.search(reply))
+    if not (leaked or claimed):
+        return reply, actions
+
+    local_actions, local_reply = local_parse(user_text, page)
+    if local_actions:
+        return local_reply, local_actions
+
+    if leaked:
+        # 本地规则也接不住，但这句泄漏的话不能给用户看
+        reply = summarize_read(read_result) if read_result else "没太听懂，换个说法试试？"
+    return reply, actions
 
 
 # ==================================================================
@@ -210,6 +352,62 @@ def date_hints(today):
             "注意：「下周三到周五」这种写法，后面的「周五」也指【下周】五，不是本周五。",
         ]
     )
+
+
+def user_context(user):
+    """
+    把当前用户的真实数据直接摆进系统提示词（像给他递一份档案袋）。
+
+    为什么要这么干 —— 踩过的坑：
+        光在提示词里写「问数据必须先调只读工具」，小模型【只有单轮对话】时听，
+        一旦对话有了历史（用户问第二句），它就自作主张直接答，
+        连工具都不调，凭空编一个状态出来。
+        实测：没历史 3 次全对；有历史 3 次全错（把别人的状态安到了用户头上）。
+
+        与其反复打磨提示词（试过，没用），不如把数据摆在它眼前 ——
+        和日期那件事一个思路：确定性的东西不要交给模型去推，
+        它只要【照抄】就不会错。
+
+        两者不矛盾：这份档案袋先保证“不会说错”，
+        只读工具再负责“档案袋里没写的”（别人的记录、按条件筛）。
+
+    接了数据库之后，这里就是一次按当前用户查表的 SQL，其他地方不用改。
+    """
+    who = (user or "").strip()
+    if not who:
+        return "用户数据：未登录，没有可查的个人数据。"
+
+    lines = ["下面是当前用户的【真实数据】。用户问到时直接照这里说，不要编："]
+
+    todos = mock_data.list_todos(assignee=who)
+    if todos:
+        brief = "；".join(
+            f"{item['title']}（{item['dueDate']}，{item['status']}"
+            f"{'，已逾期' if item['overdue'] else ''}）"
+            for item in todos
+        )
+        lines.append(f"- 他的待办共 {len(todos)} 条：{brief}")
+    else:
+        lines.append("- 他的待办：0 条")
+
+    leaves = mock_data.list_leave_records(name=who)
+    if leaves:
+        brief = "；".join(
+            f"{item['type']} {item['startDate']} 到 {item['endDate']}，状态 {item['status']}"
+            for item in leaves
+        )
+        lines.append(f"- 他的请假共 {len(leaves)} 条：{brief}")
+    else:
+        lines.append("- 他的请假：0 条")
+
+    notices = mock_data.list_notices(limit=3)
+    lines.append(
+        f"- 公告一共 {len(mock_data.NOTICES)} 条，最新的三条："
+        + "；".join(f"{item['title']}（{item['publishTime'][:10]}）" for item in notices)
+    )
+
+    lines.append("上面没写到的东西（别人的记录、按条件筛），再用只读工具去查。")
+    return "\n".join(lines)
 
 
 def call_model(messages, provider):
@@ -256,21 +454,57 @@ def run_agent(history, page, user, provider):
                 user=user or "同学",
                 page=PAGES.get(page, "工作台"),
                 calendar=date_hints(date.today()),
+                data=user_context(user),
             ),
         }
     ]
     messages += history[-8:]  # 只带最近 8 条，省 token
 
+    last_user_text = ""
+    for item in reversed(history):
+        if item.get("role") == "user":
+            last_user_text = item.get("content") or ""
+            break
+
     actions = []
     reply = ""
+    last_read = None  # 最近一次只读工具的结果，兜底文案要用
+    nudged = False
 
     for _ in range(3):
         message = call_model(messages, provider)
+        tool_calls = message.get("tool_calls") or []
+        content = (message.get("content") or "").strip()
+
+        # ---------- 防「光说不动手」 ----------
+        # 实测最要命的一类错：模型不调工具，直接开口答，内容全是编的。
+        #   「建个待办 明天截止」→ 回一句「已经为你新建」，其实什么都没建
+        #   「张晶有哪些待办」  → 回一句「没有找到」，其实有两条
+        # 而且【有历史对话时特别容易这样】，单轮反而正常。
+        #
+        # 试过 tool_choice="required"，本机这版 Ollama 直接忽略，没用。
+        # 所以改成「追问一次」：告诉它刚才那样不行，需要工具就现在调、
+        # 真的只是闲聊就回「无需工具」——给个台阶，免得「你好」也被逼着乱调工具。
+        if not tool_calls and not nudged and not actions and ACTION_HINT_RE.search(last_user_text):
+            nudged = True
+            messages.append({"role": "system", "content": NUDGE_PROMPT})
+            retry = call_model(messages, provider)
+            retry_calls = retry.get("tool_calls") or []
+            retry_text = (retry.get("content") or "").strip()
+
+            if retry_calls:
+                message, tool_calls = retry, retry_calls
+            elif NO_TOOL_MARK in retry_text:
+                # 它说确实不用工具 —— 那第一遍那个回答就是正经答案
+                message = {"role": "assistant", "content": content}
+            else:
+                message = retry
+                content = retry_text
+
         messages.append(message)
 
-        tool_calls = message.get("tool_calls") or []
         if not tool_calls:
-            reply = (message.get("content") or "").strip()
+            reply = content
             break
 
         for call in tool_calls:
@@ -284,26 +518,27 @@ def run_agent(history, page, user, provider):
                 except json.JSONDecodeError:
                     args = {}
 
-            action = action_from_tool(name, args)
+            result, action = run_tool(name, args, user)
             if action and action not in actions:
                 actions.append(action)
+            if name in READ_TOOL_NAMES:
+                last_read = result
 
             messages.append(
                 {
                     "role": "tool",
                     "tool_call_id": call["id"],
-                    "content": json.dumps(
-                        {"ok": action is not None, "action": action}, ensure_ascii=False
-                    ),
+                    "content": json.dumps(result, ensure_ascii=False),
                 }
             )
 
     if not reply:
-        reply = default_reply(actions)
+        reply = default_reply(actions, last_read)
+    reply, actions = sanitize(reply, actions, last_user_text, page, last_read)
     return reply, actions
 
 
-def default_reply(actions):
+def default_reply(actions, read_result=None):
     """模型光调工具不说话时的兜底文案。"""
     for action in actions:
         if action["type"] == "fill" and action["target"] == "leave":
@@ -312,7 +547,26 @@ def default_reply(actions):
             return "待办弹窗已经打开并预填，确认后保存。"
         if action["type"] == "navigate":
             return f"带你到「{PAGES.get(action['path'], '目标页')}」。"
+    # 查完数据不说话：把查到的念一遍，总比干吧吧一句「我在」强
+    if read_result:
+        return summarize_read(read_result) or "我在，有什么要办的？"
     return "我在，有什么要办的？"
+
+
+def summarize_read(result):
+    """把只读工具的结果压成一句话（模型没吭声时用）。"""
+    if not result.get("ok"):
+        return "查数据的时候出错了。"
+    items = result.get("items") or []
+    if not items:
+        return "没查到符合条件的记录。"
+    names = []
+    for item in items[:3]:
+        name = item.get("title") or item.get("name") or ""
+        if name:
+            names.append(name)
+    tail = "……" if len(items) > 3 else ""
+    return f"查到 {len(items)} 条：{'、'.join(names)}{tail}"
 
 
 # ==================================================================
@@ -389,6 +643,58 @@ def action_from_tool(name, args):
         fields = clean_todo(args)
         return {"type": "fill", "target": "todo", "fields": fields} if fields else None
     return None
+
+
+READ_TOOL_NAMES = ("list_todos", "list_notices", "list_leave_records")
+
+
+def run_tool(name, args, user):
+    """
+    执行模型点名的工具，返回 (喂回给模型的结果, 给前端执行的动作)。
+
+    为什么要把这两件事分开：
+        老写法默认「调工具 = 前端得做点什么」，所以结果里只回一个 action。
+        但「查我的待办」这种只读工具是【取数据给模型看】，前端什么都不用做 ——
+        硬塞一个 action 回去，前端会收到它不认识的动作类型。
+
+    所以：只读工具 → 有结果、没动作；写工具 → 有动作。
+
+    user 是当前登录用户名，只读工具在不填人名时用它当默认值，
+    这样「我有哪些待办」查的就是他自己，而不是所有人。
+    """
+    if name in READ_TOOL_NAMES:
+        return read_tool(name, args, user), None
+
+    action = action_from_tool(name, args)
+    return {"ok": action is not None, "action": action}, action
+
+
+def read_tool(name, args, user):
+    """只读工具的实现：把结果整理成 JSON 交回给模型。"""
+    try:
+        if name == "list_todos":
+            items = mock_data.list_todos(
+                assignee=(args.get("assignee") or user or "").strip(),
+                status=args.get("status"),
+                overdue_only=bool(args.get("overdue_only")),
+            )
+        elif name == "list_notices":
+            items = mock_data.list_notices(
+                type_=args.get("type"),
+                keyword=args.get("keyword"),
+                limit=args.get("limit"),
+            )
+        elif name == "list_leave_records":
+            items = mock_data.list_leave_records(
+                name=(args.get("name") or user or "").strip(),
+                status=args.get("status"),
+            )
+        else:
+            return {"ok": False, "error": f"没有这个工具：{name}"}
+    except Exception as error:  # 数据文件写错了也别把整个请求带崩
+        return {"ok": False, "error": str(error)[:200]}
+
+    return {"ok": True, "count": len(items), "today": date.today().isoformat(), "items": items}
 
 
 def reconcile_dates(action, user_text):
@@ -517,14 +823,6 @@ def resolve_dates(text, today):
             resolved.append(value)
 
     return resolved
-
-
-def guess_leave_type(text):
-    if re.search(r"病|发烧|感冒|头疼|头痛|不舒服|医院|输液|看病", text):
-        return "病假"
-    if re.search(r"年假|调休|休假", text):
-        return "年假"
-    return "事假"
 
 
 def clean_reason(text, leave_type):
