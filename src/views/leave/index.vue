@@ -2,11 +2,16 @@
   <div class="leave">
     <!-- ==================== 页头 ==================== -->
     <div class="page-head">
-      <h2 class="page-title">请假申请</h2>
+      <div>
+        <h2 class="page-title">{{ isAdmin ? '请假审批' : '请假申请' }}</h2>
+        <p class="page-desc">
+          {{ isAdmin ? '查看所有学生的请假申请，并进行审批' : '提交请假申请，并查看自己的申请记录' }}
+        </p>
+      </div>
     </div>
 
     <!-- ==================== 填写申请 ==================== -->
-    <el-card shadow="never" class="section">
+    <el-card v-if="!isAdmin" shadow="never" class="section">
       <el-form
         ref="formRef"
         :model="leaveForm"
@@ -80,11 +85,12 @@
     <!-- ==================== 申请记录 ==================== -->
     <el-card shadow="never" class="section">
       <template #header>
-        <span class="section__title">申请记录</span>
+        <span class="section__title">{{ isAdmin ? '全部申请' : '我的申请记录' }}</span>
       </template>
 
-      <el-table :data="records" stripe style="width: 100%">
+      <el-table :key="isAdmin ? 'admin-leave-table' : 'student-leave-table'" :data="records" stripe style="width: 100%">
         <el-table-column type="index" label="序号" width="70" align="center" />
+        <el-table-column v-if="isAdmin" prop="name" label="申请人" width="110" align="center" />
         <el-table-column prop="type" label="类型" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="typeTagMap[row.type]" size="small" effect="plain">{{ row.type }}</el-tag>
@@ -101,11 +107,18 @@
           </template>
         </el-table-column>
         <el-table-column prop="applyTime" label="提交时间" width="170" align="center" />
-        <el-table-column label="操作" width="90" align="center" fixed="right">
+        <el-table-column label="操作" :width="isAdmin ? 170 : 90" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="row.status === '待审批'" type="danger" link @click="cancelRecord(row)">
-              撤销
-            </el-button>
+            <template v-if="row.status === '待审批' && isAdmin">
+              <el-button type="success" link @click="reviewRecord(row, '已通过')">通过</el-button>
+              <el-button type="danger" link @click="reviewRecord(row, '已驳回')">驳回</el-button>
+            </template>
+            <el-button
+              v-else-if="row.status === '待审批'"
+              type="danger"
+              link
+              @click="cancelRecord(row)"
+            >撤销</el-button>
             <span v-else class="leave__muted">—</span>
           </template>
         </el-table-column>
@@ -128,7 +141,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Refresh } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
 
-const { userName } = useUserProfile()
+const { userName, isAdmin } = useUserProfile()
 
 const typeTagMap = { 事假: 'primary', 病假: 'warning', 年假: 'success' }
 const statusTagMap = { 待审批: 'warning', 已通过: 'success', 已驳回: 'danger' }
@@ -209,6 +222,11 @@ function formatNow() {
 }
 
 async function submitForm() {
+  if (isAdmin.value) {
+    ElMessage.error('管理员不能提交学生请假申请')
+    return
+  }
+
   try {
     await formRef.value.validate()
   } catch {
@@ -218,8 +236,9 @@ async function submitForm() {
   submitting.value = true
   // 模拟网络请求，让 loading 有效果（答辩演示更好看）
   setTimeout(() => {
-    records.value.unshift({
+    allRecords.value.unshift({
       id: Date.now(),
+      name: userName.value,
       type: leaveForm.type,
       startDate: leaveForm.startTime,
       endDate: leaveForm.endTime,
@@ -240,19 +259,21 @@ function resetForm() {
 }
 
 /** ---------- 假数据：申请记录 ---------- */
-const records = ref([
+const allRecords = ref([
   {
     id: 3,
+    name: '刘皖',
     type: '事假',
     startDate: '2026-09-28',
     endDate: '2026-09-28',
     days: 1,
     reason: '家中有事，需要回家处理',
-    status: '已通过',
+    status: '待审批',
     applyTime: '2026-09-26 20:12',
   },
   {
     id: 2,
+    name: '张晶',
     type: '病假',
     startDate: '2026-09-15',
     endDate: '2026-09-16',
@@ -263,6 +284,7 @@ const records = ref([
   },
   {
     id: 1,
+    name: '罗欣雨',
     type: '年假',
     startDate: '2026-09-05',
     endDate: '2026-09-05',
@@ -273,8 +295,16 @@ const records = ref([
   },
 ])
 
+const records = computed(() =>
+  isAdmin.value ? allRecords.value : allRecords.value.filter((record) => record.name === userName.value),
+)
+
 /** ---------- 撤销 ---------- */
 async function cancelRecord(row) {
+  if (isAdmin.value || row.name !== userName.value) {
+    ElMessage.error('只能撤销自己的请假申请')
+    return
+  }
   try {
     await ElMessageBox.confirm(`确定撤销这条「${row.type}」申请吗？`, '提示', {
       type: 'warning',
@@ -284,8 +314,34 @@ async function cancelRecord(row) {
   } catch {
     return
   }
-  records.value = records.value.filter((item) => item.id !== row.id)
+  allRecords.value = allRecords.value.filter((item) => item.id !== row.id)
   ElMessage.success('已撤销')
+}
+
+async function reviewRecord(row, status) {
+  if (!isAdmin.value) {
+    ElMessage.error('只有管理员可以审批请假申请')
+    return
+  }
+
+  const action = status === '已通过' ? '通过' : '驳回'
+  try {
+    await ElMessageBox.confirm(`确定${action}「${row.name}」的${row.type}申请吗？`, '请假审批', {
+      type: status === '已通过' ? 'success' : 'warning',
+      confirmButtonText: action,
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+
+  const record = allRecords.value.find((item) => item.id === row.id)
+  if (!record || record.status !== '待审批') {
+    ElMessage.warning('该申请已处理或不存在')
+    return
+  }
+  record.status = status
+  ElMessage.success(`申请已${action}`)
 }
 </script>
 
@@ -307,6 +363,12 @@ async function cancelRecord(row) {
   font-size: 20px;
   font-weight: 600;
   color: var(--st-text-primary);
+}
+
+.page-desc {
+  margin: 6px 0 0;
+  color: var(--st-text-secondary);
+  font-size: 13px;
 }
 
 .section {

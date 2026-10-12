@@ -36,6 +36,10 @@
         </div>
 
         <div class="layout__header-right">
+          <el-select v-model="userRole" class="role-select" aria-label="切换用户身份">
+            <el-option label="学生" value="student" />
+            <el-option label="管理员" value="admin" />
+          </el-select>
           <el-tooltip content="修改显示名称">
             <el-button text class="profile-button" @click="openProfileDialog">
               <el-avatar :size="32" class="layout__avatar">{{ userInitial }}</el-avatar>
@@ -85,7 +89,7 @@ import { Bell, Document, Edit, Expand, Fold, HomeFilled, List, School } from '@e
 import { useUserProfile } from '@/composables/userProfile'
 
 const route = useRoute()
-const { userName, userInitial } = useUserProfile()
+const { userName, userInitial, userRole } = useUserProfile()
 
 /** 侧边栏折叠状态 */
 const isCollapse = ref(false)
@@ -190,6 +194,10 @@ async function saveProfile() {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.role-select {
+  width: 112px;
 }
 
 .layout__avatar {
