@@ -179,7 +179,8 @@ zuoye/
 │       └── components/           TodoStats / TodoToolbar / TodoDialog
 ├── src/                        应用外壳（三个页面共用，不属于某个人）
 │   ├── api/
-│   │   └── ai.js               AI 助手接口层（只认前后端约定的 JSON 契约）
+│   │   ├── ai.js               AI 助手接口层（只认前后端约定的 JSON 契约）
+│   │   └── geo.js              地理位置接口层（坐标→地名）
 │   ├── assets/styles/
 │   │   ├── variables.css       全局颜色 / 间距变量（全组统一，禁止写死色值）
 │   │   └── global.css          全局基础样式
@@ -251,6 +252,7 @@ zuoye/
 - [x] AI 助手降级方案（本机模型 → 本地规则 → 前端兜底）
 - [x] AI 助手只读工具（查待办 / 查公告 / 查请假）
 - [x] 工作台每日打卡（带地理位置）
+- [x] 打卡地点显示地名（高德逆地理编码，需在 `server/.env` 填 `AMAP_KEY`）
 - [x] 顶栏通知中心（未读红点 + 已读状态）
 - [ ] AI 代理部署到线上服务器
 - [ ] 后端接口对接

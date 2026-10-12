@@ -27,16 +27,20 @@
 /**
  * 每日打卡（带地理位置）。
  *
- * ⚠️ 两件事要清楚：
+ * ⚠️ 三件事要清楚：
  * 1. 记录现在存在 localStorage（刷新还在），但只有你自己这台电脑知道——
  *    接后端后应该改成调接口，让「谁在哪打的卡」真正进数据库。
  * 2. 定位需要浏览器权限，而且**必须是 https 或 localhost**，
  *    用 IP 直访（http://47.114.62.248）浏览器会直接拒绝定位。
  *    定位失败**不会阻止打卡**，只在记录里标一下——不然用户就被卡死了。
+ * 3. 「坐标变地名」要走逆地理编码（见 src/api/geo.js）：
+ *    浏览器自带的定位**只给坐标，不给地名**，要地名必须查地图服务。
+ *    没配 key 也能用，只是显示坐标而不是地名。
  */
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CircleCheckFilled, Clock } from '@element-plus/icons-vue'
+import { reverseGeocode } from '@/api/geo'
 
 const STORAGE_KEY = 'student-work-checkin'
 
@@ -81,12 +85,16 @@ const todayText = computed(() =>
   }),
 )
 
-/** 副标题：日期 + 定位结果（打卡后才有） */
+/** 副标题：日期 + 位置（打卡后才有） */
 const subText = computed(() => {
   const place = state.value.place
   if (!place) return todayText.value
   if (place.error) return `${todayText.value} · ${place.error}`
-  return `${todayText.value} · ${place.lat}, ${place.lng}（±${place.accuracy} 米）`
+
+  // 有地名就优先显示地名（「浙江大学玉泉校区」比一串数字好认得多）；
+  // 拿不到地名就退回坐标 —— 退回去是常态，不算出错。
+  const where = place.poi || place.address || `${place.lat}, ${place.lng}（±${place.accuracy} 米）`
+  return `${todayText.value} · ${where}`
 })
 
 /**
@@ -138,6 +146,17 @@ async function doCheckIn() {
 
   locating.value = true
   const place = await getPosition()
+
+  // 拿到坐标后，再问一句「这是哪个地方」。这一步可能失败（没配 key / 没网），
+  // 失败了就只存坐标，不影响打卡。
+  if (!place.error) {
+    const geo = await reverseGeocode(place)
+    if (geo) {
+      place.poi = geo.poi
+      place.address = geo.short || geo.address
+    }
+  }
+
   locating.value = false
 
   beforeCheckIn = { ...state.value }

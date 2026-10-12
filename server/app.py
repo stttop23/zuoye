@@ -50,6 +50,9 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
 OLLAMA_ENABLED = os.getenv("OLLAMA_ENABLED", "1") != "0"
 OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "300"))  # 冷启动要加载 4.4GB 模型，给足时间
 
+# 高德地图的 Key，用来把经纬度换成地名（逆地理编码）。不填也能跑，只是显示坐标
+AMAP_KEY = os.getenv("AMAP_KEY", "").strip()
+
 
 def build_providers():
     """
@@ -973,8 +976,110 @@ def health():
     )
 
 
+# ==================================================================
+# 五、地理：把经纬度换成地名（逆地理编码）
+#
+# 为什么非要一个 key：
+#   浏览器自带的定位只给一串坐标，里面没有地名。要「这是哪条路、哪个学校」，
+#   必须再拿坐标去查地图服务。国内能用的（高德/腾讯/百度）全都要 key，
+#   免费的 OpenStreetMap 在国内连不上（实测超时）。
+#
+# 为什么在服务端调，不在浏览器里调：
+#   放浏览器里，谁打开 F12 都能把 key 抄走。放服务端，key 不出这台机器。
+#   顺带好处：以后想换腾讯/百度，前端一行都不用改。
+#
+# key 怎么弄（约 5 分钟，个人开发者免费 5000 次/天）：
+#   1. 打开 https://lbs.amap.com/ ，注册并完成个人实名认证
+#   2. 控制台 → 应用管理 → 我的应用 → 创建应用
+#   3. 添加 Key，服务平台【必须选「Web服务」】（选错成「Web端」会报 10009）
+#   4. 把 key 填到 server/.env 的 AMAP_KEY=
+# ==================================================================
+AMAP_REVERSE_URL = "https://restapi.amap.com/v3/geocode/regeo"
+
+
+# 高德表示「没查到」的方式不统一：有的字段给 ""，有的给 []。统一收拾成字符串。
+def text_field(value):
+    return value if isinstance(value, str) else ""
+
+
+def amap_reverse(lat, lng):
+    """坐标 → 地名。拿不到就返回 ok=False，绝不让打卡本身失败。"""
+    if not AMAP_KEY:
+        return {"ok": False, "reason": "未配置 AMAP_KEY", "hint": "见 server/.env.example"}
+
+    try:
+        response = requests.get(
+            AMAP_REVERSE_URL,
+            params={
+                "key": AMAP_KEY,
+                # ⚠️ 高德要的是「经度,纬度」，跟大家习惯的「纬度,经度」反着，别写错
+                "location": f"{lng},{lat}",
+                "extensions": "base",
+                "radius": 300,
+            },
+            timeout=8,
+        )
+        payload = response.json()
+    except Exception as error:  # 断网、超时、返回的不是 JSON
+        return {"ok": False, "reason": f"请求高德失败：{str(error)[:120]}"}
+
+    if payload.get("status") != "1":
+        # 10001 key 无效 / 10003 额度过 / 10009 平台类型选错 / 10012 请求过快
+        return {
+            "ok": False,
+            "reason": f"高德返回 {payload.get('infocode')}：{payload.get('info')}",
+        }
+
+    regeo = payload.get("regeocode") or {}
+    parts = regeo.get("addressComponent") or {}
+
+    # 由远到近拼一个短地址（不要省，太长了手机上换行很难看）
+    # ⚠️ 高德把「路名」放在 streetNumber.street 里，没有顶层的 street 字段。
+    #    一开始写成 parts["street"]，拼出来是「灵隐街道866号」—— 路名丢了。
+    street_number = parts.get("streetNumber")
+    if isinstance(street_number, dict):
+        street = text_field(street_number.get("street"))
+        number = text_field(street_number.get("number"))
+    else:
+        street, number = "", ""
+
+    short = "".join(
+        [
+            text_field(parts.get("city")) or text_field(parts.get("province")),
+            text_field(parts.get("district")),
+            text_field(parts.get("township")),
+            street,
+            number,
+        ]
+    )
+
+    # 高德还会顺带返回附近的兴趣点（学校、大楼、商场），这个比路名更好认
+    pois = regeo.get("pois") or []
+    first = pois[0] if pois and isinstance(pois[0], dict) else {}
+
+    return {
+        "ok": True,
+        "source": "amap",
+        "poi": text_field(first.get("name")),
+        "poiDistance": text_field(first.get("distance")),
+        "short": short,
+        "address": text_field(regeo.get("formatted_address")),
+    }
+
+
+@app.get("/api/geo/reverse")
+def geo_reverse():
+    try:
+        lat = float(request.args.get("lat"))
+        lng = float(request.args.get("lng"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "reason": "lat / lng 必须是数字"}), 400
+    return jsonify(amap_reverse(lat, lng))
+
+
 if __name__ == "__main__":
     labels = [provider["label"] for provider in build_providers()]
     print("AI 代理已启动： http://127.0.0.1:5000")
     print("模型通道（按优先级）：", " → ".join(labels) if labels else "无（只能走本地规则）")
+    print("逆地理编码（坐标→地名）：", "已配 AMAP_KEY" if AMAP_KEY else "未配 AMAP_KEY（打卡只显示坐标）")
     app.run(host="127.0.0.1", port=5000, debug=True)
