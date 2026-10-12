@@ -35,3 +35,8 @@ desktop.ini
 coverage/
 .cache/
 .vite/
+
+# --- 密钥（永远不提交）---
+.env
+.env.*
+!.env.example
