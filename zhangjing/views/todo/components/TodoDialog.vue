@@ -108,7 +108,7 @@ const rules = {
 // 每次打开都重置一次，避免残留上一次的校验红字
 watch(visible, (open) => {
   if (!open) return
-  Object.assign(form, props.initial ? { ...props.initial } : createEmptyForm())
+  Object.assign(form, { ...createEmptyForm(), ...(props.initial || {}) })
   nextTick(() => formRef.value?.clearValidate())
 })
 
