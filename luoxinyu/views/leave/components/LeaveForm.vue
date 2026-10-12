@@ -76,10 +76,11 @@
  * 请假申请表单：自带校验和日期联动。
  * 校验通过后把填好的数据抛给父级（emit submit），存到哪由父级决定。
  */
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Check, Refresh } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
+import { consumeDraft, pendingDraft } from '@/composables/aiAgent'
 
 const emit = defineEmits(['submit'])
 
@@ -101,6 +102,20 @@ const leaveForm = reactive(createEmptyForm())
 watch(userName, (name) => {
   leaveForm.name = name
 })
+
+// ---- AI 助手填表：只覆盖 AI 传过来的字段，提交按钮还是用户自己点 ----
+// immediate 是为了处理「AI 先跳页再填表」：跳过来时草稿可能已经放好了
+watch(
+  pendingDraft,
+  () => {
+    const fields = consumeDraft('leave')
+    if (!fields) return
+    Object.assign(leaveForm, fields)
+    // 清掉上一次的红色校验提示
+    nextTick(() => formRef.value?.clearValidate())
+  },
+  { immediate: true },
+)
 
 /** 结束时间不能早于开始时间 */
 function validateEndTime(rule, value, callback) {

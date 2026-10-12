@@ -115,6 +115,7 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserProfile } from '@/composables/userProfile'
+import { consumeDraft, pendingDraft } from '@/composables/aiAgent'
 import TodoStats from './components/TodoStats.vue'
 import TodoToolbar from './components/TodoToolbar.vue'
 import TodoDialog from './components/TodoDialog.vue'
@@ -262,6 +263,21 @@ function openEdit(todo) {
   dialogInitial.value = { ...todo }
   dialogVisible.value = true
 }
+
+// ---- AI 助手预填：打开新建弹窗并带上草稿，保存还是用户自己点 ----
+// immediate 是为了处理「AI 先跳页再填表」：跳过来时草稿可能已经放好了
+watch(
+  pendingDraft,
+  () => {
+    const fields = consumeDraft('todo')
+    if (!fields) return
+    dialogMode.value = 'create'
+    editingId.value = null
+    dialogInitial.value = { ...fields }
+    dialogVisible.value = true
+  },
+  { immediate: true },
+)
 
 /** 弹窗校验通过后抛上来，这里只负责写进列表 */
 function onSave(payload) {

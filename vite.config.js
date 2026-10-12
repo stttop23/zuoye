@@ -15,5 +15,13 @@ export default defineConfig({
     host: true, // 允许局域网访问，队友/手机可以直接打开你电脑的地址预览
     port: 5173,
     open: false,
+    // 把 /api 开头的请求转给本地 Python 代理（server/app.py）。
+    // 这样浏览器眼里「前端和后端是同一个源」，就不用处理跨域了。
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+      },
+    },
   },
 })

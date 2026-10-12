@@ -56,6 +56,9 @@
       </el-main>
     </el-container>
 
+    <!-- AI 助手：右下角悬浮窗，全站常驻，不属于任何一个页面 -->
+    <AiAssistant />
+
     <el-dialog v-model="profileDialogVisible" title="修改显示名称" width="420px">
       <el-form ref="profileFormRef" :model="profileForm" :rules="profileRules" @submit.prevent>
         <el-form-item label="显示名称" prop="name">
@@ -83,6 +86,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Bell, Document, Edit, Expand, Fold, HomeFilled, List, School } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
+import AiAssistant from '@/components/AiAssistant.vue'
 
 const route = useRoute()
 const { userName, userInitial } = useUserProfile()
