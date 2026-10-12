@@ -40,7 +40,7 @@
         :total="total"
         layout="total, sizes, prev, pager, next, jumper"
         background
-        @size-change="emit('size-change')"
+        @size-change="emit('size-change', $event)"
       />
     </div>
   </el-card>
