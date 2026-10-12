@@ -85,6 +85,7 @@ const allRecords = ref([
     days: 1,
     reason: '参加校外竞赛，需要请假一天',
     status: '已驳回',
+    rejectionReason: '请补充指导老师同意证明后重新提交。',
     applyTime: '2026-09-03 19:05',
   },
 ])
@@ -134,12 +135,32 @@ async function reviewRecord(row, status) {
   }
 
   const action = status === '已通过' ? '通过' : '驳回'
+  let rejectionReason = ''
   try {
-    await ElMessageBox.confirm(`确定${action}「${row.name}」的${row.type}申请吗？`, '请假审批', {
-      type: status === '已通过' ? 'success' : 'warning',
-      confirmButtonText: action,
-      cancelButtonText: '取消',
-    })
+    if (status === '已驳回') {
+      const result = await ElMessageBox.prompt(
+        `请填写驳回「${row.name}」的${row.type}申请的理由。`,
+        '驳回申请',
+        {
+          confirmButtonText: '确认驳回',
+          cancelButtonText: '取消',
+          inputType: 'textarea',
+          inputPlaceholder: '说明驳回原因，便于申请人修改后重新提交',
+          inputAttrs: { maxlength: '200' },
+          inputValidator: (value) =>
+            value.trim().length >= 2 || '驳回理由至少填写 2 个字',
+          inputErrorMessage: '驳回理由至少填写 2 个字',
+          inputValue: '',
+        },
+      )
+      rejectionReason = result.value.trim()
+    } else {
+      await ElMessageBox.confirm(`确定通过「${row.name}」的${row.type}申请吗？`, '请假审批', {
+        type: 'success',
+        confirmButtonText: '通过',
+        cancelButtonText: '取消',
+      })
+    }
   } catch {
     return
   }
@@ -150,6 +171,7 @@ async function reviewRecord(row, status) {
     return
   }
   record.status = status
+  record.rejectionReason = status === '已驳回' ? rejectionReason : ''
   ElMessage.success(`申请已${action}`)
 }
 </script>
