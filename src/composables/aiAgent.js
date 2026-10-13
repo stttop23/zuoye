@@ -58,6 +58,23 @@ export function consumeDraft(target) {
 }
 
 /**
+ * 和 pendingDraft 同一套思路，但装的是【命令】而不是表单草稿。
+ * 形如 { target: 'todo', type: 'todo_action', action: 'complete', title: '…' }。
+ *
+ * 为什么分开两个 ref：填表要把值填进表单、等用户点提交；
+ * 命令是「直接做掉」的（打卡、完成待办、撤销申请）。混在一起容易误处理。
+ */
+export const pendingCommand = ref(null)
+
+/** 页面拿走属于自己的命令（拿走即清空，避免重复执行） */
+export function consumeCommand(target) {
+  if (pendingCommand.value?.target !== target) return null
+  const command = pendingCommand.value
+  pendingCommand.value = null
+  return command
+}
+
+/**
  * 发一句话给智能体。
  * @param {string} text 用户输入
  * @param {{ page?: string, userName?: string }} context 当前页面 / 当前用户，帮模型判断上下文
@@ -113,6 +130,26 @@ const FILL_TARGET_PAGES = {
 }
 
 /**
+ * 命令类动作 → 交给哪个页面、要不要先跳页。
+ * ⚠️ 目标页面和归属不是一回事：
+ *   target 是谁来接这份命令（页面里 watch pendingCommand 的那个人）；
+ *   page   是执行前要不要先跳过去（system 类不用跳，侧边栏本来就常驻）。
+ * ⚠️ 忘了在这张表里登记的动作，runActions 里会直接报 ReferenceError ——
+ *    而且异常会被 sendAgentMessage 的 catch 吞掉，界面表现成「后端没连上」。
+ */
+const COMMAND_ROUTES = {
+  checkin: { target: 'checkin', page: '/dashboard' },
+  checkin_undo: { target: 'checkin', page: '/dashboard' },
+  todo_action: { target: 'todo', page: '/todo' },
+  leave_cancel: { target: 'leave', page: '/leave' },
+  leave_review: { target: 'leave', page: '/leave' },
+  notice_open: { target: 'notice', page: '/notice' },
+  switch_role: { target: 'system', page: null },
+  rename_user: { target: 'system', page: null },
+  toggle_setting: { target: 'system', page: null },
+}
+
+/**
  * 执行动作清单。
  * 注意：这里【只会】填表和跳页，永远不会替用户点提交——跳过去就是为了让他确认。
  */
@@ -130,24 +167,37 @@ function runActions(actions = []) {
   }
 
   actions.forEach((action) => {
-    if (action.type === 'navigate' && action.path) {
-      goTo(action.path)
-    } else if (action.type === 'fill' && action.target && action.fields) {
-      // 先放草稿、再跳页：
-      // 目标页面是挂载时才注册 watch（带 immediate），挂载时正好接住这份草稿
-      pendingDraft.value = { target: action.target, fields: action.fields }
-      shouldClose = true
-      goTo(FILL_TARGET_PAGES[action.target])
-    } else if (action.type === 'checkin') {
-      /*
-       * 打卡只能在前端做（要浏览器定位），所以这里不直接动手，
-       * 而是走和填表同一套「暗号」：放一个 target='checkin' 的草稿，
-       * 再把用户带到工作台 —— CheckIn 组件挂着 watch，接住就自己打。
-       * 顺带把抽屉收起来，让用户能看见打卡卡片真的变了。
-       */
-      pendingDraft.value = { target: 'checkin', fields: {} }
-      shouldClose = true
-      goTo('/dashboard')
+    /*
+     * 每个动作单独 try：一个动作出错不该把整次对话变成「后端没连上」。
+     * （踩过：COMMAND_ROUTES 漏登记时 runActions 抛 ReferenceError，
+     *   异常被外面 sendAgentMessage 的 catch 吞掉，界面显示成网络故障，
+     *   实际后端好得很 —— 这种假象最难查。）
+     */
+    try {
+      if (action.type === 'navigate' && action.path) {
+        goTo(action.path)
+      } else if (action.type === 'fill' && action.target && action.fields) {
+        // 先放草稿、再跳页：
+        // 目标页面是挂载时才注册 watch（带 immediate），挂载时正好接住这份草稿
+        pendingDraft.value = { target: action.target, fields: action.fields }
+        shouldClose = true
+        goTo(FILL_TARGET_PAGES[action.target])
+      } else if (COMMAND_ROUTES[action.type]) {
+        /*
+         * 操作类动作（打卡、完成待办、撤销申请……）。
+         * 做法和填表完全一样：先放暗号、再跳页 ——
+         * 目标页面是挂载时才注册 watch（带 immediate），挂载时正好接住。
+         * 为什么不像填表那样直接在这里动手？因为这些操作都依赖页面自己的状态
+         * （待办列表、请假记录都在各自页面里），在外面动不了。
+         */
+        const route = COMMAND_ROUTES[action.type]
+        pendingCommand.value = { ...action, target: route.target }
+        shouldClose = true
+        if (route.page) goTo(route.page)
+      }
+    } catch (error) {
+      // 不往外抛：抛出去会被 sendAgentMessage 的 catch 当成「后端没连上」
+      console.error('[aiAgent] 动作执行失败：', action, error)
     }
   })
 

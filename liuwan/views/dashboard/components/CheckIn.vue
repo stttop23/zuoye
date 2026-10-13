@@ -42,7 +42,7 @@ import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CircleCheckFilled, Clock } from '@element-plus/icons-vue'
 import { reverseGeocode } from '@/api/geo'
-import { consumeDraft, pendingDraft } from '@/composables/aiAgent'
+import { consumeCommand, pendingCommand } from '@/composables/aiAgent'
 
 const STORAGE_KEY = 'student-work-checkin'
 
@@ -193,15 +193,26 @@ function undo() {
 }
 
 /*
- * ---- AI 助手说「帮你打卡」时，真正动手的是这里 ----
+ * ---- AI 助手说「帮你打卡 / 撤销打卡」时，真正动手的是这里 ----
  * 定位和查地名只有浏览器能做，所以服务端（server/app.py 的 check_in 工具）
  * 只递一个信号过来，由这个组件接住并执行。
- * immediate 是为了处理「AI 先跳页再打卡」：跳过来时暗号可能已经放好了。
+ * immediate 是为了处理「AI 先跳页再操作」：跳过来时暗号可能已经放好了。
  */
 watch(
-  pendingDraft,
+  pendingCommand,
   () => {
-    if (!consumeDraft('checkin')) return
+    const command = consumeCommand('checkin')
+    if (!command) return
+
+    if (command.type === 'checkin_undo') {
+      if (!done.value) {
+        ElMessage.info('今天还没打卡，不用撤销')
+        return
+      }
+      undo()
+      return
+    }
+
     // 已经打过就说一声，别默默什么都不干（AI 那边不知道本地记录）
     if (done.value) {
       ElMessage.info('今天已经打过卡了')

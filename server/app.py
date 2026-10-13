@@ -164,6 +164,118 @@ TOOLS = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "manage_todo",
+            "description": "对待办做事：标为完成、重新打开、删除、或打开编辑弹窗。用户说「把XX标成完成」「XX做完了」「删掉XX」时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["complete", "reopen", "delete", "edit"],
+                        "description": "complete=完成、reopen=重新打开、delete=删除、edit=打开编辑弹窗",
+                    },
+                    "title": {"type": "string", "description": "待办的标题，照拄用户说的那几个字"},
+                },
+                "required": ["action", "title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "undo_check_in",
+            "description": "撤销今天的打卡。用户说「撤销打卡」「我打错了」时调用。",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cancel_leave",
+            "description": "撤销用户自己的【还没审批的】请假申请。用户说「撤销我的请假」「那条请假不请了」时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": list(LEAVE_TYPES),
+                        "description": "请假类型，只在用户提到了具体哪种假时才填",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "review_leave",
+            "description": "审批请假申请：通过或驳回。只有管理员能调。用户说「通过张晶的请假」「把李四那条驳回」时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "申请人的姓名"},
+                    "status": {"type": "string", "enum": ["已通过", "已驳回"]},
+                },
+                "required": ["name", "status"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "open_notice",
+            "description": "在公告页搜一条公告并打开它的详情弹窗。用户说「看看奖学金那条公告」「搜一下活动通知」时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "keyword": {"type": "string", "description": "要搜的词，照拄用户说的"},
+                },
+                "required": ["keyword"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "switch_role",
+            "description": "切换当前用户的身份（学生 ↔ 管理员）。用户说「切到管理员」「换回学生」时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {"role": {"type": "string", "enum": ["student", "admin"]}},
+                "required": ["role"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "rename_user",
+            "description": "改当前用户的显示名称。用户说「以后叫我小王」「把我名字改成…」时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {"name": {"type": "string", "description": "新的显示名称，1-20 字"}},
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "toggle_setting",
+            "description": "开关界面设置：界面动效、未读红点。用户说「把动效关掉」「别显示红点了」时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "enum": ["界面动效", "未读红点"]},
+                    "value": {"type": "boolean", "description": "true = 打开，false = 关掉"},
+                },
+                "required": ["name", "value"],
+            },
+        },
+    },
 
     # ---------------- 下面三个是【只读】工具：只查数据，不改任何东西 ----------------
     # 它们让 AI 从「会填表」变成「知道事」。
@@ -237,18 +349,36 @@ SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用
 - fill_leave_form：把请假信息填进请假表单（只填、不提交）
 - create_todo：打开新建待办弹窗并预填
 - check_in：帮用户完成今天的打卡（位置由浏览器定位）
+- undo_check_in：撤销今天的打卡
+- manage_todo：对待办做事（完成 / 重新打开 / 删除 / 打开编辑弹窗）
+- cancel_leave：撤销自己还没审批的请假
+- review_leave：审批请假（通过 / 驳回，只有管理员能调）
+- open_notice：在公告页搜一条公告并打开详情
+- switch_role：切换身份（学生 / 管理员）
+- rename_user：改用户的显示名称
+- toggle_setting：开关界面动效、未读红点
 - list_todos / list_notices / list_leave_records：查数据（只读，不会改任何东西）
 
 用户只是说「打开 / 去 / 进入 某个页面」时，只用 go_to_page，
-不要调只读工具、也不要建任何东西。注意这两句差别很大：
+不要调只读工具、也不要建任何东西。注意这几句差别很大：
   「打开公告」＝切到公告页，不是念一遍公告列表。
   「有什么公告 / 公告都写了啥」才是查数据。
+  「看看奖学金那条公告」＝搜出来并打开详情（open_notice）。
 
 「打卡」要用 check_in，不能用 go_to_page 代替：他要的是把卡打上，不是看一眼打卡页面。
 调完 check_in 只回一句「正在帮你打卡」就行，【不要】写成「已完成 / 打卡成功」——
 真正打没打成由浏览器说了算（可能今天已经打过，也可能定位被拒）。
 
+几个带「撤销 / 删」的说法，别选错工具：
+  「撤销打卡」→ undo_check_in；「撤销我的请假」→ cancel_leave；
+  「删掉那条待办」→ manage_todo（action=delete）。
+审批类（review_leave）只有管理员能调：当前身份是学生时，
+用户让你审批就照直说「切到管理员才能审批」，不要硬调。
+审批只能动【还没审批的】记录；已经批过的不重复审。
+
 硬性规则：
+0. 【最重要】用户说「打开 / 去 / 进入 / 切到 某个页面」时，只调 go_to_page，
+   绝对不要调只读工具、也不要念列表。他要去那个页面，不是让你把里面的内容念一遍。
 1. 上面那张日期对照表是【算好的】，直接查表。绝对不要自己推算星期几，
    也不要写中文日期，调用工具时一律用 YYYY-MM-DD 格式。
 2. 没说清楚的字段就别传，绝对不要自己编一个理由或日期塞进去。
@@ -281,7 +411,9 @@ SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用
 # 用户这句话像是在【下指令或问数据】，而不是纯闲聊。
 # 只有像下指令时才做「追问一次」的补救 —— 不然「你好」也会被逼着乱调工具。
 ACTION_HINT_RE = re.compile(
-    r"请假|病假|事假|年假|休假|待办|任务|事项|公告|通知|新建|添加|建个|加个|打卡|签到|跳|帮我|查一|看一下|有哪些|多少|几条|批了吗|通过了吗|逾期"
+    r"请假|病假|事假|年假|休假|待办|任务|事项|公告|通知|新建|添加|建个|加个|打卡|签到|"
+    r"打开|进入|跳|帮我|查一|看一下|有哪些|多少|几条|批了吗|通过了吗|逾期|"
+    r"撤销|审批|驳回|完成|做完了|删掉|删除|改成|搜一下|看看|切到|换回|叫我|关掉"
 )
 
 NO_TOOL_MARK = "无需工具"
@@ -303,6 +435,15 @@ CLAIM_RE = re.compile(
     r"已经|已帮|已为|帮你|已填|填好|已新建|已创建|已添加|已切换|已打开|已做好|已提交"
 )
 
+# 只说「稍候一下就动手」但一个动作都没产出 —— 也是空口承诺。
+# ⚠️ 不要把光秃的「正在」放进来：查数据时模型也会说「正在查」，那不是撚谎。
+PROMISE_RE = re.compile(r"稍候|马上|这就|立刻|处理中|切换中|正在帮你|正在为")
+
+# 工具名清单：模型把工具名当话说了出来（实测「undo_check_in」、
+# 「cancel_leave {"kind": "事假"}」）—— 看着像做到了，其实一个工具都没调。
+# 工具一多（现在 15 个）小模型特别容易这样。
+TOOL_NAMES = tuple(tool["function"]["name"] for tool in TOOLS)
+
 
 def sanitize(reply, actions, user_text, page, read_result):
     """
@@ -320,15 +461,23 @@ def sanitize(reply, actions, user_text, page, read_result):
 
     leaked = any(mark in reply for mark in LEAK_MARKS)
     claimed = bool(CLAIM_RE.search(reply))
-    if not (leaked or claimed):
+    # 后来补的两种（都是工具变多之后实测出来的毛病）：
+    tool_named = any(f" {name}" in f" {reply}" for name in TOOL_NAMES)
+    promised = bool(PROMISE_RE.search(reply))
+    # 第三种：直接把用户的话复读回去（实测「切到管理员」→回一句「切到管理员」）。
+    # 正常回答不会比用户的话还短还一模一样。
+    echoed = bool(reply.strip()) and reply.strip() in user_text
+    if not (leaked or claimed or tool_named or promised or echoed):
         return reply, actions
 
     local_actions, local_reply = local_parse(user_text, page)
     if local_actions:
         return local_reply, local_actions
 
-    if leaked:
-        # 本地规则也接不住，但这句泄漏的话不能给用户看
+    if leaked or tool_named or promised or echoed:
+        # 这几类话都不能给用户看：
+        #   泄漏的催办词 / 光报工具名（manage_todo({...})）/ 空口承诺 / 复读。
+        # 优先拿只读结果当回话，没有就说一句老实的话。
         reply = summarize_read(read_result) if read_result else "没太听懂，换个说法试试？"
     return reply, actions
 
@@ -663,6 +812,38 @@ def action_from_tool(name, args):
         # 打卡整个流程（取定位 → 查地名 → 落记录）都在浏览器里跑：
         # 定位是浏览器的能力，服务端拿不到坐标。所以这里只递一个信号。
         return {"type": "checkin"}
+    if name == "undo_check_in":
+        return {"type": "checkin_undo"}
+    if name == "manage_todo":
+        # 只认可枚举里的四个动作，其余一律丢掉（跟字段白名单一个思路）
+        todo_action = args.get("action")
+        title = (args.get("title") or "").strip()
+        if todo_action in ("complete", "reopen", "delete", "edit") and title:
+            return {"type": "todo_action", "action": todo_action, "title": title[:40]}
+        return None
+    if name == "cancel_leave":
+        kind = args.get("kind")
+        return {"type": "leave_cancel", "kind": kind if kind in LEAVE_TYPES else ""}
+    if name == "review_leave":
+        applicant = (args.get("name") or "").strip()
+        status = args.get("status")
+        if applicant and status in ("已通过", "已驳回"):
+            return {"type": "leave_review", "name": applicant[:20], "status": status}
+        return None
+    if name == "open_notice":
+        keyword = (args.get("keyword") or "").strip()
+        return {"type": "notice_open", "keyword": keyword[:40]} if keyword else None
+    if name == "switch_role":
+        role = args.get("role")
+        return {"type": "switch_role", "role": role} if role in ("student", "admin") else None
+    if name == "rename_user":
+        new_name = (args.get("name") or "").strip()
+        return {"type": "rename_user", "name": new_name[:20]} if new_name else None
+    if name == "toggle_setting":
+        setting = args.get("name")
+        if setting in ("界面动效", "未读红点") and isinstance(args.get("value"), bool):
+            return {"type": "toggle_setting", "name": setting, "value": args["value"]}
+        return None
     return None
 
 
@@ -926,9 +1107,44 @@ def local_parse(text, page):
     """本地兜底解析，覆盖文档里写的那些说法，解析不了就让用户自己填。"""
     today = date.today()
 
-    # 打卡：整个流程在浏览器里跑，这里只回一个动作
+    # ⚠️ 问句不是命令，直接不接。
+    # 踩过：「我有哪些待办」被 local_todo 当成「新建待办」，弹出一个空弹窗 ——
+    # 查数据的句子绝不能走本地命令兜底（那是只读工具的活）。
+    if re.search(r"有哪些|有多少|几条|哪些|什么|怎么样|了吗|吗？|吗\?|吗$", text):
+        return [], f"这个得查数据，我现在连不上后端。当前在「{PAGES.get(page, '工作台')}」页。"
+
+    # 打卡（含撤销）。注意先判撤销，不然「撤销打卡」会先被下面的打卡分支吃掉
     if re.search(r"打卡|签到", text):
+        if re.search(r"撤销|取消|打错|不算|反悔", text):
+            return [{"type": "checkin_undo"}], "正在帮你撤销打卡。"
         return [{"type": "checkin"}], "正在帮你打卡。"
+
+    # 身份切换（演示用）：要求同时出现「身份词」和「切换词」，免得乱切
+    if re.search(r"切换|切到|切成|换成|变成|切回", text):
+        if re.search(r"管理员|老师", text):
+            return [{"type": "switch_role", "role": "admin"}], "已切到管理员。"
+        if re.search(r"学生", text):
+            return [{"type": "switch_role", "role": "student"}], "已切回学生。"
+
+    # 改显示名称
+    named = re.search(r"(?:叫我|喊我|名字改成|改名为|改成)\s*([一-龥A-Za-z0-9]{1,12})", text)
+    if named and not re.search(r"待办|任务|公告|请假", text):
+        new_name = named.group(1).strip()
+        return [{"type": "rename_user", "name": new_name}], f"以后就叫你「{new_name}」。"
+
+    # 界面设置开关（开/关靠否定词判断）
+    if re.search(r"动效|动画", text):
+        on = not re.search(r"关|取消|不要|别|停止", text)
+        return (
+            [{"type": "toggle_setting", "name": "界面动效", "value": on}],
+            f"界面动效已{'打开' if on else '关闭'}。",
+        )
+    if re.search(r"红点|未读", text):
+        on = not re.search(r"关|取消|不要|别|隐藏", text)
+        return (
+            [{"type": "toggle_setting", "name": "未读红点", "value": on}],
+            f"未读红点已{'打开' if on else '关闭'}。",
+        )
 
     # 想跳页面
     for path, name in PAGES.items():
@@ -936,14 +1152,117 @@ def local_parse(text, page):
             return [{"type": "navigate", "path": path}], f"带你到「{name}」。"
 
     if re.search(r"请假|病假|事假|年假|休假|休息", text):
+        # 撤销自己的申请：要在「填表」之前判
+        if re.search(r"撤销|取消|不请了|反悔", text):
+            kind = next((t for t in LEAVE_TYPES if t in text), "")
+            return [{"type": "leave_cancel", "kind": kind}], "正在帮你撤销那条请假。"
+        # 审批：要有「人」和「通过/驳回」
+        if re.search(r"通过|批准|同意|驳回|不批|拒绝", text):
+            status = "已通过" if re.search(r"通过|批准|同意", text) else "已驳回"
+            person = re.search(r"([一-龥]{2,3})的(?:请假|申请)", text)
+            if person:
+                return (
+                    [{"type": "leave_review", "name": person.group(1), "status": status}],
+                    f"准备{'通过' if status == '已通过' else '驳回'}「{person.group(1)}」的申请。",
+                )
         action, reply = local_leave(text, today)
         return ([action] if action else []), reply
 
-    if re.search(r"待办|任务", text):
+    if re.search(r"公告|通知", text):
+        # 「看看 XX 那条公告」→ 搜出来并打开详情
+        kw = re.search(r"[「『\"']([^」』\"']{2,20})[」』\"']", text)
+        if kw:
+            return [{"type": "notice_open", "keyword": kw.group(1)}], f"搜一下「{kw.group(1)}」。"
+
+    # 待办：注意不能只认「待办/任务」这两个词 —— 用户经常说
+    # 「把整理期末学生工作总结标成完成」，整句里根本没出现「待办」。
+    if re.search(
+        r"待办|任务|标成完成|标记为?完成|设为完成|做完|搞定了|重新打开|删掉|删除", text
+    ):
+        if re.search(r"完成|做完|搞定|打勾|标成", text):
+            title = extract_title(text)
+            return ([{"type": "todo_action", "action": "complete", "title": title}] if title else []), "把它标成完成。"
+        if re.search(r"删掉|删除|不要了|去掉", text):
+            title = extract_title(text)
+            return ([{"type": "todo_action", "action": "delete", "title": title}] if title else []), "准备删掉它。"
         action, reply = local_todo(text, today)
         return ([action] if action else []), reply
 
     return [], f"我现在只连了本地规则，认不出这句。当前在「{PAGES.get(page, '工作台')}」页。"
+
+
+# 从一句话里抽待办标题：优先带引号的，否则把命令词剔掉剩下的就是标题
+TITLE_NOISE = re.compile(
+    r"帮我把|帮我|把|请|麻烦|一下|这条|那条|这个|那个|待办的|待办事项|待办|任务|"
+    r"标成完成|标记为?完成|设为?完成|标成已完成|已完成|完成|做完了|做完|搞定|打勾|"
+    r"删掉|删除|不要了|去掉|重新打开|恢复|改一下|修改|"
+    r"的|了|吧|噘|。|，|！|？|、"
+)
+
+
+def extract_title(text):
+    quoted = re.search(r"[「『\"']([^」』\"']{2,40})[」』\"']", text)
+    if quoted:
+        return quoted.group(1).strip()[:40]
+    return TITLE_NOISE.sub("", text).strip()[:40]
+
+
+# 用户在说「打开/进入/切到 某个页面」。
+# ⚠️ 必须把「看看某条公告」这类挑开：它也含页面名（公告）+ 一个动词，
+#    但那是要搜具体一条，不是要跳页。所以带「的 / 那条 / 这个 / 搜 / 找」的不算。
+PAGE_REQUEST_RE = re.compile(r"打开|进入|切到|跳转到")
+PAGE_DETAIL_RE = re.compile(r"的|那条|这条|那个|这个|搜|找")
+
+
+def page_request(text):
+    if not PAGE_REQUEST_RE.search(text) or PAGE_DETAIL_RE.search(text):
+        return None, None
+    for path, name in PAGES.items():
+        if name in text:
+            return path, name
+    return None, None
+
+
+def enforce_navigation(reply, actions, user_text):
+    """
+    确定性兜底：用户在说「打开 X 页面」时，只允许跳转。
+
+    为什么需要它：工具变到 15 个之后，小模型反复把「打开待办事项」理解成「念一遍待办列表」
+    （它调了 list_todos，还会给你讲得头头是道）。提示词里写了规则也没用。
+    → 这种完全能写死的意图就直接写死，跟 local_parse 一个思路。
+    """
+    if actions:
+        return reply, actions
+    path, name = page_request(user_text)
+    if not path:
+        return reply, actions
+    return f"带你到「{name}」。", [{"type": "navigate", "path": path}]
+
+
+# 只收「一看就是在下命令」的说法。
+# ⚠️ 口径宁窄勿宽：像「我有哪些待办」这种查数据的句子绝不能进来，
+#    否则会把模型查到的真答案换成本地兜底的呛人话。
+#    下面的词都是「动词 + 明确对象」，查数据的问句里不会出现。
+COMMAND_ONLY_RE = re.compile(
+    r"切换|切到|切成|换成|变成|切回|动效|动画|红点|叫我|喊我|名字改成|改名为|"
+    r"撤销|删掉|删除|标成完成|标记为?完成|重新打开|通过|驳回|不批|拒绝"
+)
+
+
+def enforce_commands(reply, actions, user_text, page):
+    """
+    模型什么动作都没产出、但用户这句是【明确命令】时，用本地规则把动作补上。
+
+    实测：同一句「切到管理员」，新开对话 3 次全对；
+    一旦前面聊过几句（带历史），就变成只回一句「切到管理员身份。」不动手 ——
+    小模型的老毛病。提示词救不了，所以这里用确定性的规则接着。
+    """
+    if actions or not COMMAND_ONLY_RE.search(user_text):
+        return reply, actions
+    local_actions, local_reply = local_parse(user_text, page)
+    if not local_actions:
+        return reply, actions
+    return local_reply, local_actions
 
 
 # ==================================================================
@@ -969,6 +1288,10 @@ def chat():
             reply, actions = run_agent(history, page, user, provider)
             # 日期一律用我们自己的解析结果校对一遍，见 reconcile_dates 的说明
             actions = [reconcile_dates(action, last_user_text) for action in actions]
+            # 「打开某页面」这类能写死的意图，别让小模型去猜
+            reply, actions = enforce_navigation(reply, actions, last_user_text)
+            # 模型没动手但用户确实在下命令 —— 本地规则补上（见函数注释里的实测）
+            reply, actions = enforce_commands(reply, actions, last_user_text, page)
             return jsonify(
                 {"ok": True, "source": provider["name"], "reply": reply, "actions": actions}
             )

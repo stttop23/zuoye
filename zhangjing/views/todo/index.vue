@@ -213,7 +213,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, ArrowRight, Plus } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
 import { useIsMobile } from '@/composables/useMediaQuery'
-import { consumeDraft, pendingDraft } from '@/composables/aiAgent'
+import { consumeCommand, consumeDraft, pendingCommand, pendingDraft } from '@/composables/aiAgent'
 import TodoStats from './components/TodoStats.vue'
 import TodoToolbar from './components/TodoToolbar.vue'
 import TodoDialog from './components/TodoDialog.vue'
@@ -489,6 +489,40 @@ function toggleComplete(todo) {
   todo.status = todo.status === '已完成' ? '待办' : '已完成'
   ElMessage.success(todo.status === '已完成' ? '任务已完成' : '任务已重新打开')
 }
+
+// ---- AI 助手：完成 / 重新打开 / 删除 / 打开编辑弹窗 ----
+// 按标题找那一条：先找「标题包含用户说的词」，再反过来找（用户说了一长句时用得上）
+watch(
+  pendingCommand,
+  () => {
+    const command = consumeCommand('todo')
+    if (!command || command.type !== 'todo_action') return
+
+    const kw = (command.title || '').trim()
+    const row =
+      todos.value.find((item) => item.title.includes(kw)) ??
+      todos.value.find((item) => kw.includes(item.title))
+    if (!row) {
+      ElMessage.warning(`没找到「${kw}」这条待办`)
+      return
+    }
+
+    if (command.action === 'delete') {
+      deleteTodo(row)
+    } else if (command.action === 'edit') {
+      openEdit(row)
+    } else {
+      // 已经是那个状态了就别重复改，给一句反馈（AI 不知道列表里现在是什么状态）
+      const wantDone = command.action === 'complete'
+      if ((row.status === '已完成') === wantDone) {
+        ElMessage.info(wantDone ? '它已经是完成了' : '它本来就是待办')
+        return
+      }
+      toggleComplete(row)
+    }
+  },
+  { immediate: true },
+)
 
 async function deleteTodo(todo) {
   try {

@@ -208,6 +208,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
 import { useUiSettings } from '@/composables/uiSettings'
+import { consumeCommand, pendingCommand } from '@/composables/aiAgent'
 import { useIsMobile } from '@/composables/useMediaQuery'
 import {
   isNotificationRead,
@@ -366,6 +367,49 @@ async function logout() {
   router.push('/dashboard')
   ElMessage.success('已退出')
 }
+
+/*
+ * ---- AI 助手：切换身份 / 改显示名称 / 开关设置 ----
+ * 这三件事不依赖任何页面（侧边栏是全站常驻的），所以不用跳页就能干。
+ */
+watch(
+  pendingCommand,
+  () => {
+    const command = consumeCommand('system')
+    if (!command) return
+
+    if (command.type === 'switch_role') {
+      if (userRole.value === command.role) {
+        ElMessage.info(command.role === 'admin' ? '现在就是管理员' : '现在就是学生')
+        return
+      }
+      userRole.value = command.role
+      ElMessage.success(command.role === 'admin' ? '已切到管理员' : '已切回学生')
+      return
+    }
+
+    if (command.type === 'rename_user') {
+      if (command.name === userName.value) {
+        ElMessage.info('名字没变')
+        return
+      }
+      userName.value = command.name
+      ElMessage.success(`以后就叫你「${command.name}」`)
+      return
+    }
+
+    if (command.type === 'toggle_setting') {
+      const target = command.name === '界面动效' ? motionOn : bellBadgeOn
+      if (target.value === command.value) {
+        ElMessage.info(`${command.name}已经${command.value ? '开着' : '关着'}了`)
+        return
+      }
+      target.value = command.value
+      ElMessage.success(`${command.name}已${command.value ? '打开' : '关闭'}`)
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>

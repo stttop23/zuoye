@@ -58,6 +58,7 @@ import NoticeTable from './components/NoticeTable.vue'
 import NoticeDetailDialog from './components/NoticeDetailDialog.vue'
 import { NOTICES } from '@/mock'
 import { usePermissions } from '@/composables/permissions'
+import { consumeCommand, pendingCommand } from '@/composables/aiAgent'
 
 /** 谁能发布公告（见 src/composables/permissions.js） */
 const { canDo } = usePermissions()
@@ -140,6 +141,27 @@ function onConfirmRead() {
 function onPublish() {
   ElMessage.info('发布功能由后端接口支持，当前为前端演示版本')
 }
+
+// ---- AI 助手：「看看奖学金那条公告」→ 搜出来并直接打开详情 ----
+watch(
+  pendingCommand,
+  () => {
+    const command = consumeCommand('notice')
+    if (!command || command.type !== 'notice_open') return
+
+    keyword.value = command.keyword || ''
+    typeFilter.value = ''
+    currentPage.value = 1
+
+    const hit = filteredList.value[0]
+    if (!hit) {
+      ElMessage.warning(`没搜到「${keyword.value}」相关的公告`)
+      return
+    }
+    openDetail(hit)
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>

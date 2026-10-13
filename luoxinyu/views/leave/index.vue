@@ -29,9 +29,10 @@
  * 本页已拆成两个子组件，都在 ./components/ 下：
  * LeaveForm（申请表单，自带校验）、LeaveRecords（申请记录表格）
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserProfile } from '@/composables/userProfile'
+import { consumeCommand, pendingCommand } from '@/composables/aiAgent'
 import LeaveForm from './components/LeaveForm.vue'
 import LeaveRecords from './components/LeaveRecords.vue'
 
@@ -171,6 +172,56 @@ async function reviewRecord(row, status) {
   record.rejectionReason = status === '已驳回' ? rejectionReason : ''
   ElMessage.success(`申请已${action}`)
 }
+
+/*
+ * ---- AI 助手：撤销自己的申请 / 审批别人的申请 ----
+ * 这两个动作带有【确认弹窗】（撤销要确认、驳回要填理由），
+ * 也就是 AI 只负责把弹窗推到你面前，最后一步永远由人点 —— 这就是设计里「只代笔不代签」。
+ * immediate 是为了处理「AI 先跳页再操作」：跳过来时命令可能已经放好了。
+ */
+watch(
+  pendingCommand,
+  () => {
+    const command = consumeCommand('leave')
+    if (!command) return
+
+    if (command.type === 'leave_cancel') {
+      if (isAdmin.value) {
+        ElMessage.warning('管理员没有自己的请假申请可撤销')
+        return
+      }
+      // 只在【还没审批】的记录里找，已经批过的不能撤
+      const mine = allRecords.value.filter(
+        (item) =>
+          item.status === '待审批' &&
+          item.name === userName.value &&
+          (!command.kind || item.type === command.kind),
+      )
+      if (!mine.length) {
+        ElMessage.info('没有可撤销的申请（只限还没审批的）')
+        return
+      }
+      cancelRecord(mine[mine.length - 1])
+      return
+    }
+
+    if (command.type === 'leave_review') {
+      if (!isAdmin.value) {
+        ElMessage.warning('只有管理员能审批，先在顶栏切到管理员')
+        return
+      }
+      const target = allRecords.value.find(
+        (item) => item.status === '待审批' && item.name === command.name,
+      )
+      if (!target) {
+        ElMessage.info(`没找到「${command.name}」待审批的申请`)
+        return
+      }
+      reviewRecord(target, command.status)
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>
