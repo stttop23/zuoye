@@ -35,15 +35,20 @@
 │ toggle_setting   → 开关界面动效 / 未读红点        │
 │ 【只读】                                        │
 │ list_todos / list_notices / list_leave_records   │
+│ checkin_status   → 查今天打没打卡              │
 └────────────────────────────────────────────────┘
       ↑ 模型自己决定用哪个、传什么参数
       ↓ 我们（后端代码）负责真正执行
 ```
 
-> ⚠️ 工具从 7 个涨到 15 个之后，小模型明显开始选错（实测把「打开待办事项」
+> ⚠️ 工具从 7 个涨到 16 个之后，小模型明显开始选错（实测把「打开待办事项」
 > 理解成「念一遍待办列表」）。应对办法不是继续改提示词，而是**把确定性的事写死**：
 > `enforce_navigation` 强制「打开 X 页面」只走跳转；`sanitize` + `enforce_commands`
 > 在模型「只说不做」时用本地规则把动作补上。详见 `server/app.py` 里的注释。
+>
+> 只读工具类也同理：「我今天打卡了吗」是问情况、不是命令，
+> 所以走 `checkin_status`；本地兜底 `local_parse` 也直接读快照如实回答，
+> 不会因为后端连不上就装不知道。
 
 ### 1.2 最重要的安全底线
 
@@ -106,7 +111,9 @@ graph TD
 | `src/composables/aiAgent.js` | 对话状态、`pendingDraft` 动作总线、前端兜底、日期解析 |
 | `src/composables/useSpeechInput.js` | 语音输入（浏览器 Web Speech API 的封装） |
 | `src/components/AiAssistant.vue` | 右下角悬浮入口（只有悬浮按钮 + 抽屉壳） |
-| `src/components/AiChatPanel.vue` | **聊天的本体**（消息列表 + 输入区 + 语音），抽屉和独立页面共用 || `server/mock_data.py` | **临时**假数据：只读工具要查的那三张表（抄自三个页面，接了数据库就删） |
+| `src/components/AiChatPanel.vue` | **聊天的本体**（消息列表 + 输入区 + 语音），抽屉和独立页面共用 |
+| `server/mock_data.py` | 兜底种子数据（只在拿不到前端快照时才用，接了数据库就删） |
+| `src/composables/appStore.js` | 全站业务数据的唯一源头 + `agentSnapshot()`（发给 AI 的现场快照） |
 | `src/composables/notifications.js` | 顶栏通知中心：通知列表 + 未读数 + 已读状态（见第十四节） |
 | `liuwan/views/dashboard/components/CheckIn.vue` | 每日打卡，带地理位置（见第十三节） |
 | `liuwan/views/assistant/index.vue` | AI 助手独立页面 |
@@ -208,9 +215,9 @@ Content-Type: application/json
 | `{ type: 'fill', target: 'leave', fields }` | 填请假表单 | 写进 `pendingDraft`，`LeaveForm.vue` 接住 |
 | `{ type: 'fill', target: 'todo', fields }` | 预填新建待办弹窗 | 写进 `pendingDraft`，`todo/index.vue` 接住 |
 
-> **只读工具不产生 action**。`list_todos` / `list_notices` / `list_leave_records`
-> 是「取数据给模型看」，前端什么都不用做 —— 所以它们的结果不会出现在 `actions` 里。
-> 原因和做法见第十五节。
+> **只读工具不产生 action**。`list_todos` / `list_notices` / `list_leave_records` /
+> `checkin_status` 是「取数据给模型看」，前端什么都不用做 —— 所以它们的结果不会出现在
+> `actions` 里。原因和做法见第十五节。
 
 ### 字段白名单
 
@@ -840,8 +847,16 @@ GET  /api/checkin/today                                    -> 今天打过没
 顶栏小铃铛 + 未读红点 + 弹层列表，点一条就标已读并跳到对应页面。
 已读状态存在 localStorage，**刷新后不会又变成未读**。
 
-⚠️ 但通知内容是**写死的假数据**（`MOCK_NOTIFICATIONS`），因为「谁审批、结果是什么」
-这件事得后端存下来才算数。前端只是把「通知长什么样、怎么看」先做出来。
+通知内容不再是手写死的，而是从 `appStore.js` 的实时数据【推】出来的：
+请假记录、公告、逾期待办一变，铃铛立刻跟着变。举个例子：
+
+- 请假条状态从「待审批」改成「已通过」时，通知 id 里带了状态（`leave-4-已通过`）
+  → 算成一条**新通知** → 红点重新亮起来
+  （以前 id 只带记录 id，内容变了但 id 没变 → 已读过的还是已读，铃铛一点动静都没有）
+- 「全部已读」之后再提交一条请假 → 红点 0 → 1
+
+⚠️ 还没做的是「谁审批的」：这个人名得后端存下来才算数，
+前端现在只显示到「状态变了」这一步。
 
 ### 14.2 给队友留的钩子
 
@@ -863,7 +878,7 @@ pushNotification({
 1. 拉列表：`GET  /api/notifications`
 2. 标已读：`POST /api/notifications/read`
 3. 有新通知时推过来：WebSocket，或每 30 秒轮询一次
-4. **把 `MOCK_NOTIFICATIONS` 整个删掉**
+4. **把 `buildInitialNotifications()` 整个删掉**（改成用接口返回的列表）
 
 ---
 
@@ -873,9 +888,10 @@ pushNotification({
 
 | 工具 | 用途 |
 | --- | --- |
-| `list_todos` | 查待办（可按人、按状态、只看遍期） |
+| `list_todos` | 查待办（可按人、按状态、只看逾期） |
 | `list_notices` | 查公告（可按类型、关键词） |
 | `list_leave_records` | 查请假记录（可按人、按状态） |
+| `checkin_status` | 查今天的打卡情况（打没打、几点、在哪里） |
 
 ### 15.1 循环要改一处：工具可能不产生动作
 
@@ -886,7 +902,7 @@ pushNotification({
 所以拆成了两个返回值：
 
 ```python
-result, action = run_tool(name, args, user)
+result, action = run_tool(name, args, user, snapshot)
 #   ↑ 喂回给模型看的（模型要看到数据才能说人话）
 #            ↑ 给前端执行的（只读工具这里是 None）
 ```
@@ -896,7 +912,8 @@ result, action = run_tool(name, args, user)
 光在提示词里写「问数据必须先调工具」，模型**只有单轮对话时听**。
 一旦有历史，它就跳过工具直接编（见坑 9）。
 
-所以 `user_context()` 会把当前用户的真实数据直接拼进系统提示词：
+所以 `user_context()` 会把当前用户的真实数据直接拼进系统提示词
+（数据来源同上：前端上报的快照，拿不到才用种子）：
 
 ```
 下面是当前用户的【真实数据】。用户问到时直接照这里说，不要编：
@@ -915,22 +932,54 @@ result, action = run_tool(name, args, user)
 
 > 接了数据库后，`user_context()` 就是一次按当前用户查表的 SQL，其他地方不用改。
 
-### 15.3 临时假数据：`server/mock_data.py`
+### 15.3 只读工具读的是【前端刚推上来的数据】，不是后端那份手抄本
 
-⚠️ 现在待办/公告/请假记录**写死在三个 `.vue` 里**，后端根本看不到。
-所以这个文件抄了一份相同的假数据。
+踩过的坑，比单纯答错更难发现：
 
-**它是临时的**：后端一接数据库就该删掉这个文件，改成查库。
-理由很实在：**数据只能有一个源头** —— 两边各存一份，改了一边忘了另一边，
-AI 说的和页面上显示的就不是一回事，这种 bug 最难查。
+> 后端 `mock_data.py` 里手抄了一份假数据，而用户是在**页面上**新建 / 删除的。
+> 结果 AI 一本正经地告诉你，一条你已经做完的待办「还是待办」——
+> 它说的每句话都「有据可查」，就是和眼前的事对不上。
 
-> 前端假数据改了，记得来同步改（文件头写了对应哪个页面）。
+打比方：**以前是让保安看一段录像回放，不是让他看监控现场。**
+
+所以现在前端每次发消息都把当前数据一起带上：
+
+```js
+// src/composables/aiAgent.js
+const data = await chatWithAgent({
+  messages, page, user: userName,
+  snapshot: agentSnapshot(),   // 待办 / 公告 / 请假 / 打卡，见 appStore.js
+})
+```
+
+后端拿到 `body.data` 后存成 `snapshot`，只读工具和 `user_context()` **都优先用它**：
+
+```python
+snapshot_list(snapshot, "todos") or mock_data.TODOS
+#  ↑ 前端上报的（准）              ↑ 拿不到才退回种子
+```
+
+> 一句话：**数据只有一份，就在前端。** 后端那份退化成「首次种子 + 兜底」，
+> 不再要求你改数据时两边同步（以前这里写了「记得来同步改」—— 人一定会忘）。
+
+### 15.3.1 兜底种子：`server/mock_data.py`
+
+现在它只剩两个用途：
+
+1. **兜底**：老版本前端、或者用 curl / Postman 直接调接口（没有 `data` 字段）时不报错
+2. **对照**：想看初始假数据长什么样，看这里最直接
+
+⚠️ 筛选函数（`list_todos` 等）已全部删掉——以前后端和 `app.py` 各一套筛选实现，
+两套实现迟早行为不一致。现在统一在 `app.py`：
+`filter_todos` / `filter_notices` / `filter_leave_records`。
 
 ### 15.4 再加一个只读工具的步骤
 
 1. `TOOLS` 里加一项，名字加进 `READ_TOOL_NAMES`
 2. `read_tool()` 里加一个分支，返回 `{ok, count, items}`
-3. 数据源函数写进 `mock_data.py`
+   （打卡这种不是列表的，直接返回自己的字段，但**要带 `items: []`**，
+   `sanitize` 会拿它当回话的材料）
+3. 如果数据在前端（如打卡状态），把它加进 `appStore.js` 的 `agentSnapshot()`
 
 **不用动前端** —— 只读工具不产生 action。
 

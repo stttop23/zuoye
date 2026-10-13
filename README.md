@@ -176,9 +176,15 @@ color: #303133;
 ```
 
 - 组件优先使用 Element Plus 现成组件，不要手写重复的表格 / 弹窗。
-- **假数据统一写在 `src/mock/index.js`，不要在自己页面里再抄一份。**
+- **页面不要自己内联业务数据，统一用 `src/composables/appStore.js`。**
+  那个文件是全站待办 / 公告 / 请假 / 打卡的【唯一运行时源头】：初始值从 `src/mock/index.js` 取，
+  后面自动写 localStorage（刷新不丢）。页面 import 它的 ref 用就行。
   以前首页写「公告 3 条」、公告页实际 12 条，就是因为各处各写一份。
-  数字一律从 `@/mock` 算出来，不要手写。
+  数字一律从 appStore 算出来，不要手写。
+- **AI 只读工具读的也是同一份数据**：前端每次发消息都把当前数据带上
+  （`appStore.js` 的 `agentSnapshot()`），后端优先用它。
+  否则会出现「你在页面上填了 / 删了，AI 说的还是老样子」——
+  这种对不上比单纯答错更伤，因为听着有据可查。
 - 页面专属样式写在对应 `.vue` 文件的 `<style scoped>` 中，不要污染全局样式。
 - 提交前保存文件会自动格式化（VS Code 已配置 Prettier），也可以手动执行 `npm run format`。
   想检查有没有漏掉的，跑 `npm run format:check`（覆盖 `src/` 和三个成员目录）。
@@ -198,7 +204,9 @@ color: #303133;
 | 图标 / 徽标「弹」出来 | `st-pop` |
 | 数字从 0 滚上来 | `<CountUp :value="6" />`（`src/components/CountUp.vue`） |
 | 列表项左滑露出操作 | `<SwipeRow>`（`src/components/SwipeRow.vue`）；大屏传 `:disabled` 就变成「按钮直接排在右边」 |
-| 窄屏字号 | 全局在 `@media (max-width: 768px)` 里统一压一档：大数字 24→20、欢迎条 20→17、区块标题 16→15、日历格子 68→56px。**正文保持 13-14px 不动**（再小就该睸眼了） || 界面文案 | **能删就删**：不写页面副标题、不在按钮旁写解释、不写「点击这里查看详情」这类引导语、不在图标上挂「（可以拖）」这种提示。标题 + 图标能说清就别加字。 || 悬停抬升 | `transform: translateY(-4px)` + `--st-shadow-hover` |
+| 窄屏字号 | 全局在 `@media (max-width: 768px)` 里统一压一档：大数字 24→20、欢迎条 20→17、区块标题 16→15、日历格子 68→56px。**正文保持 13-14px 不动**（再小就该眯眼了） |
+| 界面文案 | **能删就删**：不写页面副标题、不在按钮旁写解释、不写「点击这里查看详情」这类引导语、不在图标上挂「（可以拖）」这种提示。标题 + 图标能说清就别加字。 |
+| 悬停抬升 | `transform: translateY(-4px)` + `--st-shadow-hover` |
 | 缓动曲线 | `--st-ease`（标准）/ `--st-ease-back`（带一点回弹） |
 
 > ⚠️ **在全局 CSS 里覆盖各页面自己的 scoped 样式，必须写三层选择器**：
@@ -276,23 +284,24 @@ zuoye/
 │   │   ├── CountUp.vue         数字滚动（从 0 滚到目标值）
 │   │   └── SwipeRow.vue        左滑露出操作（待办列表在用，通用组件）
 │   ├── composables/
-│   │   ├── aiAgent.js          AI 对话状态 + 填表动作总线 + 本地兜底
+│   │   ├── appStore.js         ★ 全站业务数据的【唯一运行时源头】（待办/公告/请假/打卡，localStorage 持久化）
+│   │   ├── aiAgent.js          AI 对话状态 + 填表/命令动作总线 + 本地兜底
 │   │   ├── useSpeechInput.js   语音输入（浏览器 Web Speech API 封装）
-│   │   ├── notifications.js    顶栏通知中心（未读数 + 已读状态）
+│   │   ├── notifications.js    顶栏通知中心（从 appStore 的实时数据推出来 + 已读状态）
 │   │   ├── permissions.js      权限能力表（前端控制，真正拦人靠后端）
 │   │   ├── uiSettings.js       界面偏好（界面动效 / 未读红点，localStorage 持久化）
 │   │   └── userProfile.js      当前用户显示名称 + 角色（localStorage 持久化）
 │   ├── layout/
 │   │   └── BasicLayout.vue     整体布局：侧边栏（含底部账号入口）+ 顶栏（含通知中心）+ 面包屑 + 内容区
 │   ├── mock/
-│   │   └── index.js            ★ 全站唯一假数据源（公告 / 待办 / 请假 / 成员 + 算出来的统计）
+│   │   └── index.js            初始种子数据（只被 appStore 读一次，页面不再直接用它）
 │   ├── router/
 │   │   └── index.js            路由表（刘皖统一维护）
 │   ├── App.vue
 │   └── main.js                 入口：Element Plus、路由、全局样式
 ├── server/                     AI 代理服务（Flask，调本机模型）
 │   ├── app.py                  工具定义 + 智能体循环 + 日期校正 + 本地规则兜底
-│   ├── mock_data.py            ⚠️ 临时假数据（只读工具查的就是它，接数据库后删）
+│   ├── mock_data.py            兜底种子（拿不到前端快照时才用；接数据库后删）
 │   ├── requirements.txt
 │   ├── .env                    本机配置（已被 gitignore，不提交）
 │   └── .env.example            配置模板
@@ -370,7 +379,13 @@ zuoye/
 - [x] 工作台每日打卡（带地理位置）
 - [x] 打卡地点显示地名（高德逆地理编码，需在 `server/.env` 填 `AMAP_KEY`）
 - [x] 顶栏通知中心（未读红点 + 已读状态）
-- [x] 假数据统一到 `src/mock/`（首页四个数字改为从同一份数据算出来）
+- [x] 假数据统一到 appStore（唯一运行时源头；页面里再没有内联的假数据了）
+- [x] 数据和 AI 同源（发消息时把页面数据当快照推给后端，AI 说的和页面看到的不再打架）
+- [x] 刷新不丢（appStore 自动写 localStorage；新建的待办 / 请假刷新还在）
+- [x] 发布公告（真发得出去：公告页、首页数字、最新公告、通知中心一起变）
+- [x] 通知中心改为从实时数据推导（审批 / 提交后铃铛真的会亮）
+- [x] AI 能答「我今天打卡了吗」（`checkin_status` 只读工具）
+- [x] 权限补全（待办只能删自己的；管理员不能审批自己的申请）
 - [x] 五个页面的截图（`docs/screenshots/`）
 - [x] 权限能力表（`src/composables/permissions.js`，公告页的「发布公告」按角色显示）
 - [x] 界面动效升级（胶囊菜单、页面过渡、数字滚动、无障碍适配）
@@ -382,5 +397,5 @@ zuoye/
   打卡定位还必须有 https，演示效果反而比本机差。**演示就用本机 `npm run dev`。**
   唯一留下的部署存档是 `deploy/nginx-zuoye.conf`（含 SPA 路由坑 + HTTPS 写法）
 - [ ] 后端接口对接
-- [ ] 把假数据换成数据库（`src/mock/` 和 `server/mock_data.py` 一起换）
-- [ ] 队友页面里内联的假数据改读 `src/mock/`（待办页 / 请假页，得她们自己改）
+- [ ] 把假数据换成数据库（改 `src/composables/appStore.js` 里读写 localStorage 的部分，页面不用动；
+  然后把 `server/mock_data.py` 删掉，只读工具改成查库）
