@@ -68,6 +68,15 @@ INITIAL_PROMPT = "以下是一段普通话的句子，请用简体中文转写�
 # Whisper 只认这个采样率，解码时统一重采样到这里
 SAMPLE_RATE = 16000
 
+# VAD 之后如果人声短于这个秒数，就当「没人说话」。
+# 实测：我没吭声、只录了 1.7 秒环境噪声，Whisper 硬是编出了两个字。
+MIN_SPEECH_SECONDS = 0.3
+
+# 单个片段「不是人声」的概率超过这个值就丢掉。
+# Whisper 有个众所周知的毛病：音频里没有语音时会自己编一段话（而且编得挺像那么回事）。
+# 0.6 是社区里常用的阈值；同时它也能挡掉「背景噪声被当成一句话」的情况。
+NO_SPEECH_PROB_MAX = 0.6
+
 _model = None
 _load_seconds = None
 _lock = threading.Lock()
@@ -209,8 +218,8 @@ def transcribe(data, language="zh"):
 
     started = time.time()
 
-    # transcribe 返回的是【生成器】—— 真正的识别发生在下面 for 循环里，
-    # 所以计时要包住整个循环，不能只包住这一行。
+    # transcribe 返回的是【生成器】—— 真正的识别发生在【迭代】的时候，
+    # 所以：① 计时要包住整个迭代；② 只能迭代一次（第二次拿到的是空的）。
     segments, info = model.transcribe(
         pcm,
         language=language,
@@ -218,9 +227,24 @@ def transcribe(data, language="zh"):
         vad_filter=True,  # 先用 VAD 掐掉静音段：又准又省时间
         initial_prompt=INITIAL_PROMPT,
     )
-    text = "".join(segment.text for segment in segments).strip()
 
-    if _is_prompt_echo(text):
+    kept = []
+    speech_seconds = 0.0
+    dropped = 0
+    for segment in segments:  # ← 这一次迭代就是真正的识别过程
+        # 丢掉「其实不是人声」的片段（Whisper 在噪声/静音上会自己编话）
+        no_speech = getattr(segment, "no_speech_prob", 0.0) or 0.0
+        if no_speech > NO_SPEECH_PROB_MAX:
+            dropped += 1
+            continue
+        kept.append(segment.text)
+        speech_seconds += max(0.0, segment.end - segment.start)
+
+    text = "".join(kept).strip()
+
+    # 两道防「凭空编话」：静音时 Whisper 会自己编，
+    # 而「AI 冒出用户没说过的话」比「没听清」伤得多。
+    if speech_seconds < MIN_SPEECH_SECONDS or _is_prompt_echo(text):
         text = ""
 
     return {
@@ -228,6 +252,8 @@ def transcribe(data, language="zh"):
         "text": text,
         "seconds": round(time.time() - started, 2),  # 识别本身花了多久
         "audio_seconds": audio_seconds,  # 这段音频多长
+        "speech_seconds": round(speech_seconds, 2),  # 其中人声大概多久
+        "dropped_segments": dropped,  # 被当成「不是人声」丢掉的片段数
         "language": getattr(info, "language", language),
         **model_info(),
     }

@@ -214,6 +214,7 @@
           setResult(data.text || '（没听清）')
           setMeta(
             `音频 ${data.audio_seconds}s（实际录了 ${audioSeconds.toFixed(1)}s）` +
+              ` · 人声 ${data.speech_seconds}s · 丢掉的片段 ${data.dropped_segments}` +
               ` · 识别 ${data.seconds}s · 含网络往返 ${roundTrip}s` +
               ` · ${data.model}/${data.device}`,
           )

@@ -40,6 +40,16 @@ const RETRYABLE_ERRORS = new Set(['audio-capture', 'network'])
 const MAX_RETRY = 3
 
 /**
+ * 「看门狗」：开始听后多久还没认出一个字就认定这个浏览器的语音服务不会响应。
+ *
+ * 为什么要它（实测踩到的）：在某些 Chromium 环境里（比如 VS Code 内置浏览器），
+ * 点了「说话」之后既没有结果、**也不报任何错** —— 按钮就那样一直停在「停止」，
+ * 用户看到的只是「说了话不出字」，完全不知道发生了什么。
+ * 现在超时就给一句人话并收工。
+ */
+const NO_RESULT_TIMEOUT = 10000
+
+/**
  * @param {object} options
  * @param {string} [options.lang] 识别语言，默认普通话
  * @param {(text: string) => void} [options.onText] 每识别出一段就回调（含临时结果）
@@ -64,6 +74,8 @@ export function useSpeechInput({ lang = 'zh-CN', onText, onError } = {}) {
   let fatal = false // 遇到致命错误就不再自动续听，免得死循环
   let retries = 0 // 本次录音里重试了几次
   let restartTimer = null // 续听的定时器，stop() 时要清掉
+  let watchdogTimer = null // 看门狗：一直没结果就收工
+  let gotResult = false // 本次录音有没有认出一个字
 
   function ensure() {
     if (recognition || !supported.value) return recognition
@@ -75,6 +87,8 @@ export function useSpeechInput({ lang = 'zh-CN', onText, onError } = {}) {
     recognition.maxAlternatives = 1
 
     recognition.onresult = (event) => {
+      gotResult = true
+      clearTimeout(watchdogTimer) // 有人声了就关掉看门狗
       let interim = ''
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
         const result = event.results[i]
@@ -115,6 +129,7 @@ export function useSpeechInput({ lang = 'zh-CN', onText, onError } = {}) {
         if (!listening.value) return
         try {
           recognition.start()
+          armWatchdog() // 续听也是一次新的「开始」，看门狗得跟着重起
         } catch {
           listening.value = false
         }
@@ -122,6 +137,31 @@ export function useSpeechInput({ lang = 'zh-CN', onText, onError } = {}) {
     }
 
     return recognition
+  }
+
+  /**
+   * 开看门狗：从「开始听」算起，若 NO_RESULT_TIMEOUT 内一个字都没认出来，
+   * 就认定这个浏览器的语音服务不会响应 —— 给它一句人话并收工。
+   *
+   * ⚠️ 首次开始和【每次续听】都要重新起，所以抽成函数。
+   */
+  function armWatchdog() {
+    gotResult = false
+    clearTimeout(watchdogTimer)
+    watchdogTimer = setTimeout(() => {
+      if (!listening.value || gotResult) return
+      fatal = true
+      listening.value = false
+      clearTimeout(restartTimer)
+      try {
+        recognition?.stop()
+      } catch {
+        // 已经停了就不用管
+      }
+      onError?.(
+        '一直没听到声音。这个浏览器的语音识别要靠云端，可能连不上网 —— 换个浏览器，或者用本机识别那个页面试试',
+      )
+    }, NO_RESULT_TIMEOUT)
   }
 
   function start(existing = '') {
@@ -138,13 +178,17 @@ export function useSpeechInput({ lang = 'zh-CN', onText, onError } = {}) {
       listening.value = true
     } catch {
       onError?.('麦克风启动失败，可能被别的程序占用了。')
+      return
     }
+
+    armWatchdog()
   }
 
   function stop() {
     if (!listening.value) return
     listening.value = false // 先置 false，onend 就不会再自动续听
     clearTimeout(restartTimer) // 把排着的「续听」取消掉，否则停止后它又把麦克风打开
+    clearTimeout(watchdogTimer)
     try {
       recognition?.stop()
     } catch {
