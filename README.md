@@ -192,8 +192,7 @@ color: #303133;
 | 图标 / 徽标「弹」出来 | `st-pop` |
 | 数字从 0 滚上来 | `<CountUp :value="6" />`（`src/components/CountUp.vue`） |
 | 列表项左滑露出操作 | `<SwipeRow>`（`src/components/SwipeRow.vue`）；大屏传 `:disabled` 就变成「按钮直接排在右边」 |
-| 窄屏字号 | 全局在 `@media (max-width: 768px)` 里统一压一档：大数字 24→20、欢迎条 20→17、区块标题 16→15、日历格子 68→56px。**正文保持 13-14px 不动**（再小就该睸眼了） |
-| 悬停抬升 | `transform: translateY(-4px)` + `--st-shadow-hover` |
+| 窄屏字号 | 全局在 `@media (max-width: 768px)` 里统一压一档：大数字 24→20、欢迎条 20→17、区块标题 16→15、日历格子 68→56px。**正文保持 13-14px 不动**（再小就该睸眼了） || 界面文案 | **能删就删**：不写页面副标题、不在按钮旁写解释、不写「点击这里查看详情」这类引导语、不在图标上挂「（可以拖）」这种提示。标题 + 图标能说清就别加字。 || 悬停抬升 | `transform: translateY(-4px)` + `--st-shadow-hover` |
 | 缓动曲线 | `--st-ease`（标准）/ `--st-ease-back`（带一点回弹） |
 
 > ⚠️ **在全局 CSS 里覆盖各页面自己的 scoped 样式，必须写三层选择器**：

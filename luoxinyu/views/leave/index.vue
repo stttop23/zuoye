@@ -4,9 +4,6 @@
     <div class="page-head">
       <div>
         <h2 class="page-title">{{ isAdmin ? '请假审批' : '请假申请' }}</h2>
-        <p class="page-desc">
-          {{ isAdmin ? '查看所有学生的请假申请，并进行审批' : '提交请假申请，并查看自己的申请记录' }}
-        </p>
       </div>
     </div>
 
@@ -145,7 +142,7 @@ async function reviewRecord(row, status) {
           confirmButtonText: '确认驳回',
           cancelButtonText: '取消',
           inputType: 'textarea',
-          inputPlaceholder: '说明驳回原因，便于申请人修改后重新提交',
+          inputPlaceholder: '驳回原因',
           inputAttrs: { maxlength: '200' },
           inputValidator: (value) =>
             value.trim().length >= 2 || '驳回理由至少填写 2 个字',
@@ -194,12 +191,6 @@ async function reviewRecord(row, status) {
   font-size: 20px;
   font-weight: 600;
   color: var(--st-text-primary);
-}
-
-.page-desc {
-  margin: 6px 0 0;
-  color: var(--st-text-secondary);
-  font-size: 13px;
 }
 
 /* 表单和表格的样式已随子组件移走，见 ./components/ */

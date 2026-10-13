@@ -13,14 +13,12 @@ import { ref } from 'vue'
 import router from '@/router'
 import { chatWithAgent } from '@/api/ai'
 
-/** 对话记录；meta: true 的条目只是提示，不会发给模型 */
-export const agentMessages = ref([
-  {
-    role: 'assistant',
-    content: '我是 AI 助手。试试「下周三到周五请病假，感冒发烧」。',
-    meta: true,
-  },
-])
+/**
+ * 对话记录，一开始是空的：
+ * 输入框上方那三个快捷短语已经把「能说什么」讲清楚了，再放一句欢迎语只是占地方。
+ * （meta: true 的条目只当提示、不会发给模型，这个开关留着给以后用。）
+ */
+export const agentMessages = ref([])
 
 /** 是否正在等后端回复 */
 export const agentSending = ref(false)
@@ -93,7 +91,7 @@ export async function sendAgentMessage(text, { page, userName } = {}) {
 
 /** 清空对话 */
 export function resetAgent() {
-  agentMessages.value = agentMessages.value.filter((message) => message.meta)
+  agentMessages.value = []
 }
 
 function pushReply(content, source) {

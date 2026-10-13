@@ -36,12 +36,12 @@
         type="textarea"
         :rows="2"
         resize="none"
-        :placeholder="listening ? '正在听……' : '说一句话，比如：下周三到周五请病假'"
+        :placeholder="listening ? '正在听……' : '说一句话'"
         @keydown.enter.exact.prevent="submit"
       />
       <div class="ai-chat__actions">
         <div class="ai-chat__actions-left">
-          <el-tooltip :content="voiceTip" placement="top">
+          <el-tooltip :content="voiceTip" :disabled="voiceSupported" placement="top">
             <el-button
               link
               class="ai-chat__voice"
@@ -123,8 +123,9 @@ const {
 })
 
 const voiceTip = computed(() => {
+  // 只在不支持的时候提示一句（按钮也置灰了，用户得知道为什么）
   if (!voiceSupported.value) return '当前浏览器不支持语音输入，换 Chrome 或 Edge'
-  return listening.value ? '松开就停' : '按住说话（需要联网）'
+  return ''
 })
 
 /*

@@ -126,13 +126,11 @@
             <el-option label="学生" value="student" />
             <el-option label="管理员" value="admin" />
           </el-select>
-          <el-tooltip content="修改显示名称">
-            <el-button text class="profile-button" @click="openProfileDialog">
-              <el-avatar :size="32" class="layout__avatar">{{ userInitial }}</el-avatar>
-              <span class="profile-name">{{ userName }}</span>
-              <el-icon><Edit /></el-icon>
-            </el-button>
-          </el-tooltip>
+          <el-button text class="profile-button" @click="openProfileDialog">
+            <el-avatar :size="32" class="layout__avatar">{{ userInitial }}</el-avatar>
+            <span class="profile-name">{{ userName }}</span>
+            <el-icon><Edit /></el-icon>
+          </el-button>
         </div>
       </el-header>
 

@@ -6,7 +6,7 @@
         <el-avatar :size="56" class="welcome__avatar">{{ userInitial }}</el-avatar>
         <div>
           <h2 class="welcome__title">欢迎来到工作台，{{ userName }}</h2>
-          <p class="welcome__desc">{{ todayText }} · 今天也要元气满满哦</p>
+          <p class="welcome__desc">{{ todayText }}</p>
         </div>
       </div>
     </el-card>

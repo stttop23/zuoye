@@ -48,13 +48,6 @@ a {
   border-radius: var(--st-radius-pill);
 }
 
-/* 页面副标题 / 说明文字 */
-.page-desc {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--st-text-secondary);
-}
-
 /* 页面区块容器（带白底和圆角，可替代 el-card 做轻量布局） */
 .page-block {
   padding: var(--st-gap-lg);
@@ -409,14 +402,6 @@ a {
 
   .layout .layout__main .task__title {
     font-size: 14px; /* 15 → 14，待办条目标题 */
-  }
-
-  /*
-   * 手机上说明文字纯占地方（一屏就那么高），标题已经说清楚了。
-   * ⚠️ 同样要三层选择器才压得住各页面 scoped 里的 .page-desc。
-   */
-  .layout .layout__main .page-desc {
-    display: none;
   }
 
   /* 弹窗别顶到屏幕边，也别离顶部太远 */

@@ -7,17 +7,15 @@
     @pointerdown="按下"
     @click.capture="点的时候"
   >
-    <el-tooltip :content="'AI 助手（可以拖）'" :placement="side === 'left' ? 'right' : 'left'">
-      <el-button
-        type="primary"
-        circle
-        size="large"
-        aria-label="打开 AI 助手"
-        @click="drawerVisible = true"
-      >
-        <el-icon :size="22"><ChatDotRound /></el-icon>
-      </el-button>
-    </el-tooltip>
+    <el-button
+      type="primary"
+      circle
+      size="large"
+      aria-label="打开 AI 助手"
+      @click="drawerVisible = true"
+    >
+      <el-icon :size="22"><ChatDotRound /></el-icon>
+    </el-button>
   </div>
 
   <!-- 抽屉从哪边出来，跟着按钮吸附到哪边 -->

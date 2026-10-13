@@ -3,7 +3,6 @@
     <header class="page-head">
       <div>
         <h2 class="page-title">待办事项</h2>
-        <p class="page-desc">统一安排、跟进和完成学生工作任务</p>
       </div>
       <el-button type="primary" @click="openCreate">
         <el-icon><Plus /></el-icon>
@@ -20,7 +19,6 @@
           <header class="calendar-header">
             <div>
               <h3 class="calendar-title">日程日历</h3>
-              <p class="calendar-caption">点击日期查看当天安排</p>
             </div>
             <div class="calendar-controls">
               <el-button circle aria-label="上个月" @click="changeCalendarMonth(-1)">
@@ -529,12 +527,6 @@ async function deleteTodo(todo) {
   font-weight: 600;
 }
 
-.page-desc {
-  margin: 6px 0 0;
-  color: var(--st-text-secondary);
-  font-size: 13px;
-}
-
 .section {
   border: none;
 }
@@ -574,7 +566,6 @@ async function deleteTodo(todo) {
   font-weight: 600;
 }
 
-.calendar-caption,
 .day-schedule__count {
   margin: 5px 0 0;
   color: var(--st-text-secondary);
