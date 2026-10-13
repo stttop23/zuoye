@@ -1,4 +1,4 @@
-"""
+r"""
 本机语音转文字（faster-whisper）
 ================================
 
@@ -21,6 +21,22 @@
 ⚠️ 依赖：`pip install faster-whisper`
     它自带 PyAV（ffmpeg 的 Python 绑定），所以**不需要另外装 ffmpeg**。
     浏览器录出来的是 webm/opus，PyAV 直接能解，不用先转成 wav。
+
+⚠️⚠️ 换台机器时留意一个坑：**模型可能「下载成功」但文件是 0 字节。**
+    第一次跑会自动从 HuggingFace 下 medium（1.5GB）。
+    实测遇到过一次：`model.bin` 正常，但 `config.json` / `tokenizer.json` /
+    `vocabulary.txt` 全是 0 字节（连同缓存里的 blobs 也是 0），
+    **而且下载过程不报任何错** —— 直到加载模型才抛一句莫名其妙的
+    `json.exception.parse_error ... unexpected end of input`。
+    症状：`WhisperModel(...)` 抛 RuntimeError，提到 json parse error。
+    救法（model.bin 不用重下）：
+        # 先把小文件用普通 HTTP 直接拉下来，覆盖掉那 0 字节的
+        $snap = "$env:USERPROFILE\.cache\huggingface\hub\models--Systran--faster-whisper-medium\snapshots\<那串哈希>"
+        $base = "https://huggingface.co/Systran/faster-whisper-medium/resolve/main"
+        foreach ($f in 'config.json','tokenizer.json','vocabulary.txt') {
+          Invoke-WebRequest "$base/$f" -OutFile (Join-Path $snap $f) -MaximumRedirection 8
+        }
+    缓存目录里没有 `preprocessor_config.json` 是正常的，那个仓库就没有。
 
 ⚠️ 设备选择：默认走 CPU + int8。
     没走 GPU 是刻意的 —— ctranslate2 要用上 CUDA，得额外装好几个 GB 的
