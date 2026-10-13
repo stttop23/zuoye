@@ -388,6 +388,30 @@ a {
   }
 
   /*
+   * 手机屏窄，桌面那套「大字号」会显得又挤又重。
+  /* 这里只压「大数字 / 大标题」一档，**正文（13-14px）不动** —— 再小就该眯眼了。
+   * ⚠️ 又是三层选择器：这些类名都写在各页面的 <style scoped> 里，
+   *    编译后带 [data-v-xxx]，单个类名压不住。
+   */
+  .layout .layout__main .stat-card__value,
+  .layout .layout__main .summary-value {
+    font-size: 20px; /* 24 → 20，首页统计卡 + 待办页统计条的大数字 */
+  }
+
+  .layout .layout__main .welcome__title {
+    font-size: 17px; /* 20 → 17，工作台欢迎条 */
+  }
+
+  .layout .layout__main .calendar-title,
+  .layout .layout__main .day-schedule__title {
+    font-size: 15px; /* 16 → 15，日程日历 / 当天安排 */
+  }
+
+  .layout .layout__main .task__title {
+    font-size: 14px; /* 15 → 14，待办条目标题 */
+  }
+
+  /*
    * 手机上说明文字纯占地方（一屏就那么高），标题已经说清楚了。
    * ⚠️ 同样要三层选择器才压得住各页面 scoped 里的 .page-desc。
    */

@@ -944,6 +944,15 @@ async function deleteTodo(todo) {
     gap: 22px;
   }
 
+  /* 68px 的格子在小屏上太占地方：6 行就 400 多 px，一个日历占掉半屏多 */
+  .calendar-day {
+    min-height: 56px;
+  }
+
+  .calendar-weekday {
+    padding: 7px 0;
+  }
+
   .day-schedule {
     padding: 14px;
   }

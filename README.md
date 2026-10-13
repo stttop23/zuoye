@@ -189,8 +189,14 @@ color: #303133;
 | 图标 / 徽标「弹」出来 | `st-pop` |
 | 数字从 0 滚上来 | `<CountUp :value="6" />`（`src/components/CountUp.vue`） |
 | 列表项左滑露出操作 | `<SwipeRow>`（`src/components/SwipeRow.vue`）；大屏传 `:disabled` 就变成「按钮直接排在右边」 |
+| 窄屏字号 | 全局在 `@media (max-width: 768px)` 里统一压一档：大数字 24→20、欢迎条 20→17、区块标题 16→15、日历格子 68→56px。**正文保持 13-14px 不动**（再小就该睸眼了） |
 | 悬停抬升 | `transform: translateY(-4px)` + `--st-shadow-hover` |
 | 缓动曲线 | `--st-ease`（标准）/ `--st-ease-back`（带一点回弹） |
+
+> ⚠️ **在全局 CSS 里覆盖各页面自己的 scoped 样式，必须写三层选择器**：
+> 页面里写的是 `.page-title`，scoped 编译成 `.page-title[data-v-xxx]`（权重 0,2,0），
+> 我写 `.page-title`（0,1,0）**压不住**，得写 `.layout .layout__main .page-title`（0,3,0）。
+> 窄屏那几条字号规则就是靠这个才生效的。
 
 > ⚠️ **别漏了 `prefers-reduced-motion`。** 全局已兜底（动画时长归零），
 > 但你自己写的 `animation-delay` 也要一起清零，否则开了「减少动态效果」的人
