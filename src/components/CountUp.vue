@@ -44,7 +44,14 @@ function run(to) {
   startedAt = performance.now()
 
   const tick = (now) => {
-    const progress = Math.min(1, (now - startedAt) / props.duration)
+    /*
+     * ⚠️ 两头都要夹住。
+     * `now` 是 rAF 给的**这一帧的开始时间**，不一定比我上面记的 startedAt 晚：
+     * 主线程忙的时候回调会晚调用，但时间戳还是旧帧的 → 差值是**负数**，
+     * 于是 easeOutCubic 算出来也是负的，数字开头会闪一下 「-1」。
+     * （实测真的闪了，抓帧才看到。）
+     */
+    const progress = Math.min(1, Math.max(0, (now - startedAt) / props.duration))
     const eased = 1 - Math.pow(1 - progress, 3) // easeOutCubic
     display.value = Math.round(from + (to - from) * eased)
     if (progress < 1) frame = requestAnimationFrame(tick)
