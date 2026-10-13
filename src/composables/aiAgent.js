@@ -12,6 +12,7 @@
 import { ref } from 'vue'
 import router from '@/router'
 import { chatWithAgent } from '@/api/ai'
+import { agentSnapshot } from './appStore'
 
 /**
  * 对话记录，一开始是空的：
@@ -93,7 +94,17 @@ export async function sendAgentMessage(text, { page, userName } = {}) {
     .map((message) => ({ role: message.role, content: message.content }))
 
   try {
-    const data = await chatWithAgent({ messages: history, page, user: userName })
+    /*
+     * 把「现场」一起送过去：待办 / 公告 / 请假记录 / 打卡状态。
+     * 后端的只读工具优先用这份，而不是 `server/mock_data.py` 里手抄的一份 ——
+     * 否则 AI 看的是录像回放，你在页面上新填的东西它根本不知道。
+     */
+    const data = await chatWithAgent({
+      messages: history,
+      page,
+      user: userName,
+      snapshot: agentSnapshot(),
+    })
     pushReply(data.reply, data.source)
     runActions(data.actions)
   } catch {

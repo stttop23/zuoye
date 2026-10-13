@@ -4,7 +4,11 @@
  * 只认下面这一份契约：
  *
  *   请求  POST /api/ai/chat
- *         { messages: [{role, content}], page: '/leave', user: '刘皖' }
+ *         { messages: [{role, content}], page: '/leave', user: '刘皖', data: {...} }
+ *
+ *        data 是「现场快照」（待办 / 公告 / 请假记录 / 打卡状态），
+ *        由 src/composables/appStore.js 的 agentSnapshot() 提供。
+ *        后端的只读工具（查待办、查请假……）优先用它，读到的就是页面上那一份。
  *
  *   响应  { ok: true, source: 'ai' | 'local', reply: '...', actions: [...] }
  *
@@ -16,11 +20,11 @@
  */
 const BASE_URL = import.meta.env.VITE_AI_BASE_URL || '/api'
 
-export async function chatWithAgent({ messages, page, user }) {
+export async function chatWithAgent({ messages, page, user, snapshot }) {
   const response = await fetch(`${BASE_URL}/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, page, user }),
+    body: JSON.stringify({ messages, page, user, data: snapshot }),
   })
 
   // 后端没启动 / 500 / 502 → 抛出异常，由上层走本地兜底

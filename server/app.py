@@ -336,6 +336,14 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "checkin_status",
+            "description": "查今天的打卡情况（打没打、几点打的、在哪儿）。用户问「我今天打卡了吗」「我打卡了吗」时调用。",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 ]
 
 SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用户查东西和填表单。
@@ -357,17 +365,22 @@ SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用
 - switch_role：切换身份（学生 / 管理员）
 - rename_user：改用户的显示名称
 - toggle_setting：开关界面动效、未读红点
-- list_todos / list_notices / list_leave_records：查数据（只读，不会改任何东西）
+- list_todos / list_notices / list_leave_records / checkin_status：查数据（只读，不会改任何东西）
 
 用户只是说「打开 / 去 / 进入 某个页面」时，只用 go_to_page，
 不要调只读工具、也不要建任何东西。注意这几句差别很大：
   「打开公告」＝切到公告页，不是念一遍公告列表。
   「有什么公告 / 公告都写了啥」才是查数据。
   「看看奖学金那条公告」＝搜出来并打开详情（open_notice）。
+  「我今天打卡了吗 / 打卡了没」＝问情况，调 checkin_status；「帮我打卡」才是 check_in。
+
+工具返回的数据就是用户此刻页面上真实的那一份（前端每次发消息都会把数据推上来），
+所以你读到什么就说什么，不用怀疑它会过期。
 
 「打卡」要用 check_in，不能用 go_to_page 代替：他要的是把卡打上，不是看一眼打卡页面。
 调完 check_in 只回一句「正在帮你打卡」就行，【不要】写成「已完成 / 打卡成功」——
 真正打没打成由浏览器说了算（可能今天已经打过，也可能定位被拒）。
+但「我今天打卡了吗」是【问情况】，要调 checkin_status（只读），不要调 check_in。
 
 几个带「撤销 / 删」的说法，别选错工具：
   「撤销打卡」→ undo_check_in；「撤销我的请假」→ cancel_leave；
@@ -445,7 +458,7 @@ PROMISE_RE = re.compile(r"稍候|马上|这就|立刻|处理中|切换中|正在
 TOOL_NAMES = tuple(tool["function"]["name"] for tool in TOOLS)
 
 
-def sanitize(reply, actions, user_text, page, read_result):
+def sanitize(reply, actions, user_text, page, read_result, snapshot=None):
     """
     模型输出的最后一道体检。两种毛病都不认它那句，改走本地规则兜底：
 
@@ -470,7 +483,7 @@ def sanitize(reply, actions, user_text, page, read_result):
     if not (leaked or claimed or tool_named or promised or echoed):
         return reply, actions
 
-    local_actions, local_reply = local_parse(user_text, page)
+    local_actions, local_reply = local_parse(user_text, page, snapshot)
     if local_actions:
         return local_reply, local_actions
 
@@ -520,7 +533,7 @@ def date_hints(today):
     )
 
 
-def user_context(user):
+def user_context(user, snapshot=None):
     """
     把当前用户的真实数据直接摆进系统提示词（像给他递一份档案袋）。
 
@@ -537,6 +550,11 @@ def user_context(user):
         两者不矛盾：这份档案袋先保证“不会说错”，
         只读工具再负责“档案袋里没写的”（别人的记录、按条件筛）。
 
+    ⚠️ 这里也必须用前端上报的快照，不能读 mock_data 的种子：
+        这是「AI 说的和页面上显示的对不上」的【第二个来源】——
+        档案袋里塞的是旧数据，模型照着抄得越认真，错得越离谱。
+        快照拿不到才退回种子（见 snapshot_list）。
+
     接了数据库之后，这里就是一次按当前用户查表的 SQL，其他地方不用改。
     """
     who = (user or "").strip()
@@ -545,7 +563,7 @@ def user_context(user):
 
     lines = ["下面是当前用户的【真实数据】。用户问到时直接照这里说，不要编："]
 
-    todos = mock_data.list_todos(assignee=who)
+    todos = filter_todos(snapshot_list(snapshot, "todos") or mock_data.TODOS, assignee=who)
     if todos:
         brief = "；".join(
             f"{item['title']}（{item['dueDate']}，{item['status']}"
@@ -556,7 +574,9 @@ def user_context(user):
     else:
         lines.append("- 他的待办：0 条")
 
-    leaves = mock_data.list_leave_records(name=who)
+    leaves = filter_leave_records(
+        snapshot_list(snapshot, "leaveRecords") or mock_data.LEAVE_RECORDS, name=who
+    )
     if leaves:
         brief = "；".join(
             f"{item['type']} {item['startDate']} 到 {item['endDate']}，状态 {item['status']}"
@@ -566,11 +586,19 @@ def user_context(user):
     else:
         lines.append("- 他的请假：0 条")
 
-    notices = mock_data.list_notices(limit=3)
+    all_notices = snapshot_list(snapshot, "notices") or mock_data.NOTICES
+    notices = filter_notices(all_notices, limit=3)
     lines.append(
-        f"- 公告一共 {len(mock_data.NOTICES)} 条，最新的三条："
+        f"- 公告一共 {len(all_notices)} 条，最新的三条："
         + "；".join(f"{item['title']}（{item['publishTime'][:10]}）" for item in notices)
     )
+
+    state = read_checkin(snapshot)
+    if state.get("known"):
+        if state.get("checked_in"):
+            lines.append(f"- 他今天已打卡（{state.get('time') or ''}）")
+        else:
+            lines.append("- 他今天还没打卡")
 
     lines.append("上面没写到的东西（别人的记录、按条件筛），再用只读工具去查。")
     return "\n".join(lines)
@@ -608,7 +636,7 @@ def call_model(messages, provider):
     return response.json()["choices"][0]["message"]
 
 
-def run_agent(history, page, user, provider):
+def run_agent(history, page, user, provider, snapshot=None):
     """
     智能体主循环：最多来回 3 轮。
     模型要么调用工具（我们执行 + 把结果喂回去），要么开口说话（结束）。
@@ -620,7 +648,7 @@ def run_agent(history, page, user, provider):
                 user=user or "同学",
                 page=PAGES.get(page, "工作台"),
                 calendar=date_hints(date.today()),
-                data=user_context(user),
+                data=user_context(user, snapshot),
             ),
         }
     ]
@@ -684,7 +712,7 @@ def run_agent(history, page, user, provider):
                 except json.JSONDecodeError:
                     args = {}
 
-            result, action = run_tool(name, args, user)
+            result, action = run_tool(name, args, user, snapshot)
             if action and action not in actions:
                 actions.append(action)
             if name in READ_TOOL_NAMES:
@@ -700,7 +728,7 @@ def run_agent(history, page, user, provider):
 
     if not reply:
         reply = default_reply(actions, last_read)
-    reply, actions = sanitize(reply, actions, last_user_text, page, last_read)
+    reply, actions = sanitize(reply, actions, last_user_text, page, last_read, snapshot)
     return reply, actions
 
 
@@ -723,6 +751,12 @@ def summarize_read(result):
     """把只读工具的结果压成一句话（模型没吭声时用）。"""
     if not result.get("ok"):
         return "查数据的时候出错了。"
+    # 打卡不是列表，单独说一句
+    if "checked_in" in result:
+        if result.get("checked_in"):
+            where = f"，{result['place']}" if result.get("place") else ""
+            return f"今天 {result.get('time') or ''} 打过卡了{where}。"
+        return "今天还没打卡。"
     items = result.get("items") or []
     if not items:
         return "没查到符合条件的记录。"
@@ -847,10 +881,136 @@ def action_from_tool(name, args):
     return None
 
 
-READ_TOOL_NAMES = ("list_todos", "list_notices", "list_leave_records")
+READ_TOOL_NAMES = ("list_todos", "list_notices", "list_leave_records", "checkin_status")
+
+# 模型说「全部 / 所有人」时不按人筛选
+ALL_WORDS = ("全部", "所有", "所有人", "*", "大家")
 
 
-def run_tool(name, args, user):
+def wants_all(value):
+    return str(value or "").strip() in ALL_WORDS
+
+
+def pick(item, keys):
+    """只把模型需要知道的字段挑出来，别把整个对象塞过去浪费 token。"""
+    return {key: item.get(key) for key in keys if item.get(key) is not None}
+
+
+def snapshot_list(snapshot, key):
+    """
+    从「现场快照」里取一份列表。
+
+    为什么要有这个东西：只读工具以前读的是 mock_data.py 里【手抄】的一份，
+    而用户在页面上的增删改那边根本不知道 —— 于是 AI 会一本正经地告诉你
+    一条你已经做完的待办「还是待办」。这比单纯答错更伤，因为听着有据可查。
+
+    现在前端每次发消息都把当前数据一起带上来（src/composables/appStore.js
+    的 agentSnapshot），这里优先用它 —— 相当于把「看录像回放」改成「看监控现场」。
+    快照里没这个 key（比如页面还没打开过）才退回 mock_data 里的种子。
+    """
+    if not isinstance(snapshot, dict) or key not in snapshot:
+        return None
+    value = snapshot.get(key)
+    return value if isinstance(value, list) else None
+
+
+def filter_todos(items, assignee=None, status=None, overdue_only=False):
+    """查待办。逾期与否由这里的代码判断 —— 这种日期比较不能交给模型算。"""
+    today = date.today().isoformat()
+    result = []
+
+    for item in items:
+        if not wants_all(assignee) and assignee and item.get("assignee") != assignee:
+            continue
+        if status and item.get("status") != status:
+            continue
+        due = item.get("dueDate") or ""
+        overdue = bool(due) and due < today and item.get("status") != "已完成"
+        if overdue_only and not overdue:
+            continue
+        row = pick(item, ("id", "title", "category", "priority", "assignee", "dueDate", "status"))
+        row["overdue"] = overdue
+        result.append(row)
+
+    result.sort(key=lambda row: row.get("dueDate") or "")
+    result.sort(key=lambda row: row.get("status") == "已完成")
+    return result
+
+
+def filter_notices(items, type_=None, keyword=None, limit=3):
+    """查公告。排序和前端一致：置顶的在前，然后按 id 从大到小。"""
+    kw = (keyword or "").strip()
+    result = []
+
+    for item in items:
+        if type_ and item.get("type") != type_:
+            continue
+        if kw and kw not in (item.get("title") or ""):
+            continue
+        result.append(pick(item, ("id", "title", "type", "author", "publishTime", "top")))
+
+    result.sort(key=lambda row: row.get("id") or 0, reverse=True)
+    result.sort(key=lambda row: not row.get("top"))
+    try:
+        count = int(limit)
+    except (TypeError, ValueError):
+        count = 5
+    return result[: max(1, min(count, 12))]
+
+
+def filter_leave_records(items, name=None, status=None):
+    """查请假记录。name 传「全部」查所有人。"""
+    result = []
+    for item in items:
+        if not wants_all(name) and name and item.get("name") != name:
+            continue
+        if status and item.get("status") != status:
+            continue
+        result.append(
+            pick(
+                item,
+                (
+                    "id",
+                    "name",
+                    "type",
+                    "startDate",
+                    "endDate",
+                    "days",
+                    "reason",
+                    "status",
+                    "rejectionReason",
+                    "applyTime",
+                ),
+            )
+        )
+    result.sort(key=lambda row: row.get("id") or 0, reverse=True)
+    return result
+
+
+def read_checkin(snapshot):
+    """
+    查今天的打卡。打卡记录存在浏览器里（坐标、地名只有浏览器拿得到），
+    所以这份数据【只可能】从快照来，没有快照就老实说不知道。
+    """
+    today = date.today().isoformat()
+    state = (snapshot or {}).get("checkin") if isinstance(snapshot, dict) else None
+    if not isinstance(state, dict):
+        return {"ok": True, "known": False, "today": today, "note": "打卡记录在用户浏览器里，这次没拿到"}
+
+    place = state.get("place") or {}
+    return {
+        "ok": True,
+        "known": True,
+        "today": today,
+        "checked_in": state.get("lastDate") == today,
+        "time": state.get("lastTime") or "",
+        "streak": state.get("streak") or 0,
+        "place": place.get("poi") or place.get("short") or place.get("address") or "",
+        "items": [],
+    }
+
+
+def run_tool(name, args, user, snapshot=None):
     """
     执行模型点名的工具，返回 (喂回给模型的结果, 给前端执行的动作)。
 
@@ -863,37 +1023,45 @@ def run_tool(name, args, user):
 
     user 是当前登录用户名，只读工具在不填人名时用它当默认值，
     这样「我有哪些待办」查的就是他自己，而不是所有人。
+
+    snapshot 是前端上报的现场数据，只读工具优先用它（见 snapshot_list）。
     """
     if name in READ_TOOL_NAMES:
-        return read_tool(name, args, user), None
+        return read_tool(name, args, user, snapshot), None
 
     action = action_from_tool(name, args)
     return {"ok": action is not None, "action": action}, action
 
 
-def read_tool(name, args, user):
+def read_tool(name, args, user, snapshot=None):
     """只读工具的实现：把结果整理成 JSON 交回给模型。"""
     try:
+        if name == "checkin_status":
+            return read_checkin(snapshot)
+
         if name == "list_todos":
-            items = mock_data.list_todos(
+            items = filter_todos(
+                snapshot_list(snapshot, "todos") or mock_data.TODOS,
                 assignee=(args.get("assignee") or user or "").strip(),
                 status=args.get("status"),
                 overdue_only=bool(args.get("overdue_only")),
             )
         elif name == "list_notices":
-            items = mock_data.list_notices(
+            items = filter_notices(
+                snapshot_list(snapshot, "notices") or mock_data.NOTICES,
                 type_=args.get("type"),
                 keyword=args.get("keyword"),
                 limit=args.get("limit"),
             )
         elif name == "list_leave_records":
-            items = mock_data.list_leave_records(
+            items = filter_leave_records(
+                snapshot_list(snapshot, "leaveRecords") or mock_data.LEAVE_RECORDS,
                 name=(args.get("name") or user or "").strip(),
                 status=args.get("status"),
             )
         else:
             return {"ok": False, "error": f"没有这个工具：{name}"}
-    except Exception as error:  # 数据文件写错了也别把整个请求带崩
+    except Exception as error:  # 数据格式不对也别把整个请求带崩
         return {"ok": False, "error": str(error)[:200]}
 
     return {"ok": True, "count": len(items), "today": date.today().isoformat(), "items": items}
@@ -1103,9 +1271,21 @@ def local_todo(text, today):
     return {"type": "fill", "target": "todo", "fields": fields}, "本地规则解析了待办标题，打开弹窗确认一下。"
 
 
-def local_parse(text, page):
+def local_parse(text, page, snapshot=None):
     """本地兜底解析，覆盖文档里写的那些说法，解析不了就让用户自己填。"""
     today = date.today()
+
+    # 「我今天打卡了吗」是问情况，不是命令。
+    # 本来下面那个问句守卫会把它挡掉，但打卡状态就在快照里，能如实回答 ——
+    # 该知道的就说知道，别装作不知道。
+    if re.search(r"打卡|签到", text) and re.search(r"吗|了没|有没有|记录|情况|几次", text):
+        state = read_checkin(snapshot)
+        if not state.get("known"):
+            return [], "打卡记录存在这台浏览器里，我这次没拿到。"
+        if state.get("checked_in"):
+            where = f"，{state['place']}" if state.get("place") else ""
+            return [], f"今天 {state.get('time')} 打过了{where}，连续 {state.get('streak')} 天。"
+        return [], "今天还没打卡。"
 
     # ⚠️ 问句不是命令，直接不接。
     # 踩过：「我有哪些待办」被 local_todo 当成「新建待办」，弹出一个空弹窗 ——
@@ -1249,7 +1429,7 @@ COMMAND_ONLY_RE = re.compile(
 )
 
 
-def enforce_commands(reply, actions, user_text, page):
+def enforce_commands(reply, actions, user_text, page, snapshot=None):
     """
     模型什么动作都没产出、但用户这句是【明确命令】时，用本地规则把动作补上。
 
@@ -1259,7 +1439,7 @@ def enforce_commands(reply, actions, user_text, page):
     """
     if actions or not COMMAND_ONLY_RE.search(user_text):
         return reply, actions
-    local_actions, local_reply = local_parse(user_text, page)
+    local_actions, local_reply = local_parse(user_text, page, snapshot)
     if not local_actions:
         return reply, actions
     return local_reply, local_actions
@@ -1274,6 +1454,9 @@ def chat():
     history = body.get("messages") or []
     page = body.get("page") or "/dashboard"
     user = (body.get("user") or "").strip()
+    # 前端每次请求都会带上页面上真实的业务数据（见 src/composables/appStore.js）。
+    # 只读工具优先用它，这样 AI 读到的和用户眼前看到的永远是同一份。
+    snapshot = body.get("data") if isinstance(body.get("data"), dict) else {}
 
     last_user_text = ""
     for message in reversed(history):
@@ -1285,13 +1468,13 @@ def chat():
     failures = []
     for provider in build_providers():
         try:
-            reply, actions = run_agent(history, page, user, provider)
+            reply, actions = run_agent(history, page, user, provider, snapshot)
             # 日期一律用我们自己的解析结果校对一遍，见 reconcile_dates 的说明
             actions = [reconcile_dates(action, last_user_text) for action in actions]
             # 「打开某页面」这类能写死的意图，别让小模型去猜
             reply, actions = enforce_navigation(reply, actions, last_user_text)
             # 模型没动手但用户确实在下命令 —— 本地规则补上（见函数注释里的实测）
-            reply, actions = enforce_commands(reply, actions, last_user_text, page)
+            reply, actions = enforce_commands(reply, actions, last_user_text, page, snapshot)
             return jsonify(
                 {"ok": True, "source": provider["name"], "reply": reply, "actions": actions}
             )
@@ -1299,7 +1482,7 @@ def chat():
             failures.append(f"{provider['label']}：{error}")
             print(f"[降级] {provider['label']} 用不了 → {error}")
 
-    actions, reply = local_parse(last_user_text, page)
+    actions, reply = local_parse(last_user_text, page, snapshot)
     return jsonify(
         {
             "ok": True,

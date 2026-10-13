@@ -1,36 +1,26 @@
 """
-临时假数据（给 AI 只读工具用）
-==============================
+兜底种子数据（只在拿不到前端快照时用）
+====================================
 
-为什么会有这个文件：
-    现在待办 / 公告 / 请假记录是【写死在各个 .vue 页面里的假数据】，
-    后端根本看不到它们。AI 要回答「我还有哪些待办」，得先有数据可查。
+现在数据只有【一个】真源头：`src/composables/appStore.js`。
+前端每次发消息都会把当前数据一起推上来（`agentSnapshot()`），
+后端的只读工具优先用那一份 —— 用户在页面上新填的东西它立刻就看得见。
 
-    ⚠️ 前端的唯一数据源现在是 `src/mock/index.js`（首页数字、公告页都读它）。
-    后端是 Python，没法 import 一个 .js，所以这里只能【手抄一份】。
-    改数据请先改 `src/mock/index.js`，再同步到这里 —— 以后端为准是反的，
-    因为用户看到的是前端。
+那这个文件还有什么用？
+    1) 兜底：万一老版本的前端、或者用 curl/Postman 直接调接口，没有 data 字段，
+       就退回这里这份种子，免得工具报错。
+    2) 对照：想看初始假数据长什么样，看这里最直接。
 
-⚠️ 这是临时方案，别当真数据用：
-    后端一接上数据库，就应该删掉这个文件，改成查库，比如
-        SELECT * FROM todos WHERE assignee = ?
-    那时候前端页面里的假数据也要一起删掉。
-    理由很实在：数据只能有一个源头。两边各存一份，改了一边忘了另一边，
-    AI 说的和页面上显示的就是两回事，这种 bug 最难查。
+⚠️ 以前这里还抄了一份 list_todos / list_notices / list_leave_records，
+    和 app.py 会形成两套筛选实现 —— 两套实现意味着两边行为迟早不一致。
+    那些函数已全部删掉，筛选统一在 app.py 里（filter_todos / filter_notices /
+    filter_leave_records）。
 
-    所以：前端假数据改了，记得来这里同步改。
-
-对应的前端文件（数据源头在那边，以那边为准）：
-    src/mock/index.js                  ← 唯一数据源，改这里
-    zhangjing/views/todo/index.vue     ← ⚠️ 张晶的页面里还内联着一份 TODOS
-    luoxinyu/views/leave/index.vue     ← ⚠️ 罗欣雨的页面里还内联着一份记录
+⚠️ 别在业务里依赖这个文件：后端一接上数据库就应该连它一起删掉。
 """
 
-from datetime import date
-
 # ------------------------------------------------------------------
-# 待办事项（抄自 zhangjing/views/todo/index.vue）
-# ⚠️ assignee 里的「刘皖」在前端是 userName.value，等于当前登录用户
+# 待办事项（种子，与 src/mock/index.js 的 TODOS 对齐）
 # ------------------------------------------------------------------
 TODOS = [
     {
@@ -198,9 +188,22 @@ NOTICES = [
 ]
 
 # ------------------------------------------------------------------
-# 请假记录（抄自 luoxinyu/views/leave/index.vue）
+# 请假记录（种子，与 src/mock/index.js 的 LEAVE_RECORDS 对齐）
 # ------------------------------------------------------------------
 LEAVE_RECORDS = [
+    {
+        # 队友的待审批申请：审批有「不能批自己」的校验，若待审批全是当前用户的，
+        # 管理员在演示时就没东西可批了。
+        "id": 4,
+        "name": "罗欣雨",
+        "type": "事假",
+        "startDate": "2026-10-16",
+        "endDate": "2026-10-16",
+        "days": 1,
+        "reason": "参加校外竞赛需要提前到场准备",
+        "status": "待审批",
+        "applyTime": "2026-10-12 09:20",
+    },
     {
         "id": 3,
         "name": "刘皖",
@@ -236,88 +239,3 @@ LEAVE_RECORDS = [
         "applyTime": "2026-09-03 19:05",
     },
 ]
-
-# 模型说「全部 / 所有人」时不按人筛选
-ALL_WORDS = ("全部", "所有", "所有人", "*", "大家")
-
-
-def _wants_all(value):
-    return str(value or "").strip() in ALL_WORDS
-
-
-def _pick(item, keys):
-    """只把模型需要知道的字段挑出来，别把整个对象塞过去浪费 token。"""
-    return {key: item.get(key) for key in keys if item.get(key) is not None}
-
-
-def list_todos(assignee=None, status=None, overdue_only=False):
-    """
-    查待办。assignee 传「全部」查所有人，传具体名字查那个人，不传/传空则不过滤。
-    overdue_only 由这里的代码判断是否逾期 —— 这种日期比较不能交给模型算。
-    """
-    today = date.today().isoformat()
-    result = []
-
-    for item in TODOS:
-        if not _wants_all(assignee) and assignee and item["assignee"] != assignee:
-            continue
-        if status and item["status"] != status:
-            continue
-        # 逾期 = 过了截止日期、又还没做完
-        if overdue_only and not (item["dueDate"] < today and item["status"] != "已完成"):
-            continue
-        row = _pick(item, ("id", "title", "category", "priority", "assignee", "dueDate", "status"))
-        row["overdue"] = item["dueDate"] < today and item["status"] != "已完成"
-        result.append(row)
-
-    result.sort(key=lambda row: (row["status"] == "已完成", row["dueDate"]))
-    return result
-
-
-def list_notices(type_=None, keyword=None, limit=3):
-    """查公告。排序和前端一致：置顶的在前，然后按 id 从大到小。"""
-    kw = (keyword or "").strip()
-    result = []
-
-    for item in NOTICES:
-        if type_ and item["type"] != type_:
-            continue
-        if kw and kw not in item["title"]:
-            continue
-        result.append(_pick(item, ("id", "title", "type", "author", "publishTime", "top")))
-
-    result.sort(key=lambda row: (not row["top"], -row["id"]))
-    try:
-        count = int(limit)
-    except (TypeError, ValueError):
-        count = 5
-    return result[: max(1, min(count, 12))]
-
-
-def list_leave_records(name=None, status=None):
-    """查请假记录。name 传「全部」查所有人。"""
-    result = []
-    for item in LEAVE_RECORDS:
-        if not _wants_all(name) and name and item["name"] != name:
-            continue
-        if status and item["status"] != status:
-            continue
-        result.append(
-            _pick(
-                item,
-                (
-                    "id",
-                    "name",
-                    "type",
-                    "startDate",
-                    "endDate",
-                    "days",
-                    "reason",
-                    "status",
-                    "rejectionReason",
-                    "applyTime",
-                ),
-            )
-        )
-    result.sort(key=lambda row: -row["id"])
-    return result
