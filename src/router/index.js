@@ -37,6 +37,12 @@ const routes = [
         meta: { title: '待办事项', icon: 'List' },
       },
       {
+        path: 'contacts',
+        name: 'Contacts',
+        component: () => import('../../liuwan/views/contacts/index.vue'),
+        meta: { title: '通讯录', icon: 'User' },
+      },
+      {
         path: 'assistant',
         name: 'Assistant',
         // AI 助手独立页面（抽屉里的那份聊天本体复用 AiChatPanel.vue）

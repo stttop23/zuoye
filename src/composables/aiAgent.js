@@ -349,6 +349,7 @@ function localFallback(text, page) {
     '/notice': '公告通知',
     '/leave': '请假申请',
     '/todo': '待办事项',
+    '/contacts': '通讯录',
   })) {
     if (text.includes(name)) {
       return { reply: `【本地兜底】带你到「${name}」。`, actions: [{ type: 'navigate', path }] }

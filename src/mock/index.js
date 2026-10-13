@@ -26,6 +26,34 @@
 /** 小组成员（写死，因为它不是业务数据） */
 export const MEMBERS = ['刘皖', '罗欣雨', '张晶']
 
+/** 通讯录演示数据；联系方式为虚构示例，不对应真实号码或邮箱 */
+export const DIRECTORY_CONTACTS = [
+  {
+    id: 1,
+    name: '刘皖',
+    department: '技术组',
+    role: '前端核心开发',
+    phone: '138****1024',
+    email: 'liu.wan@example.com',
+  },
+  {
+    id: 2,
+    name: '罗欣雨',
+    department: '事务组',
+    role: '请假模块负责人',
+    phone: '139****2058',
+    email: 'luo.xinyu@example.com',
+  },
+  {
+    id: 3,
+    name: '张晶',
+    department: '项目组',
+    role: '项目统筹',
+    phone: '137****3167',
+    email: 'zhang.jing@example.com',
+  },
+]
+
 /** ---------- 公告通知 ---------- */
 export const NOTICES = [
   {

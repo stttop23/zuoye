@@ -7,11 +7,7 @@
       抽屉还在往回滑，背景已经亮回来了 —— 看着就像闪了一下。
     -->
     <transition name="mask">
-      <div
-        v-if="isMobile && mobileMenuOpen"
-        class="layout__mask"
-        @click="mobileMenuOpen = false"
-      />
+      <div v-if="isMobile && mobileMenuOpen" class="layout__mask" @click="mobileMenuOpen = false" />
     </transition>
 
     <!-- ==================== 左侧菜单 ==================== -->
@@ -205,6 +201,7 @@ import {
   List,
   Menu,
   School,
+  User,
 } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
 import { useUiSettings } from '@/composables/uiSettings'
@@ -318,6 +315,7 @@ const menus = [
   { path: '/notice', title: '公告通知', icon: Bell },
   { path: '/leave', title: '请假申请', icon: Document },
   { path: '/todo', title: '待办事项', icon: List },
+  { path: '/contacts', title: '通讯录', icon: User },
 ]
 
 /** 面包屑第二级标题，直接读路由 meta */
