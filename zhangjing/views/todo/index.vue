@@ -865,10 +865,11 @@ async function deleteTodo(todo) {
 }
 
 /* ---------- 左滑露出来的操作按钮 ---------- */
-/* 三个按钮宽度加起来 = SwipeRow 的 :width，不然会露出缝隙 */
+/* 三个按钮宽度 + 两个 3px 缝 = SwipeRow 的 :width(208)，加起来不对就会露出缝隙 */
 .swipe-btn {
-  width: 62px;
+  width: 60px;
   border: none;
+  border-radius: var(--st-radius-lg);
   font: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -878,7 +879,7 @@ async function deleteTodo(todo) {
 }
 
 .swipe-btn--done {
-  width: 84px;
+  width: 82px;
   background: linear-gradient(135deg, #7ed06a 0%, #52b23a 100%);
 }
 
@@ -903,8 +904,8 @@ async function deleteTodo(todo) {
 .task-list__item--static .swipe-btn {
   width: auto;
   height: 28px;
-  padding: 0 10px;
-  border-radius: var(--st-radius-sm);
+  padding: 0 12px;
+  border-radius: var(--st-radius-pill);
   font-weight: 400;
   background: none;
 }

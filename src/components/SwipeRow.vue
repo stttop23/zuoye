@@ -167,6 +167,8 @@ defineExpose({ 收起 })
   bottom: 0;
   display: flex;
   align-items: stretch;
+  /* 按钮之间留一道缝，圆角才看得见；缝宽算在 :width 里（见使用方的宽度注释） */
+  gap: 3px;
 }
 
 .swipe-row__content {
