@@ -6,7 +6,9 @@
         <h2 class="page-title">公告通知</h2>
         <p class="page-desc">查看学生会发布的通知公告，支持关键词搜索与分页浏览</p>
       </div>
-      <el-button type="primary" @click="onPublish">
+      <!-- 发布是管理员的活，学生看不到这个按钮。
+           ⚠️ 前端藏按钮只是体验，真正的拦截得后端重验（否则绕过前端照样能发） -->
+      <el-button v-if="canDo('notice.publish')" type="primary" @click="onPublish">
         <el-icon><Plus /></el-icon>
         发布公告
       </el-button>
@@ -55,120 +57,19 @@ import { Plus } from '@element-plus/icons-vue'
 import NoticeFilter from './components/NoticeFilter.vue'
 import NoticeTable from './components/NoticeTable.vue'
 import NoticeDetailDialog from './components/NoticeDetailDialog.vue'
+import { NOTICES } from '@/mock'
+import { usePermissions } from '@/composables/permissions'
 
-/** ---------- 假数据 ---------- */
-const allNotices = ref([
-  {
-    id: 12,
-    title: '关于期末学生工作总结的通知',
-    type: '通知',
-    author: '张晶',
-    publishTime: '2026-10-02 09:15',
-    top: true,
-    content:
-      '请各部门于 10 月 15 日前提交本学期工作总结，内容包括工作成果、存在问题及下学期计划。总结需以 Word 文档形式发送至学生会邮箱。',
-  },
-  {
-    id: 11,
-    title: '校园文化活动报名开始啦',
-    type: '活动',
-    author: '罗欣雨',
-    publishTime: '2026-10-01 14:30',
-    top: true,
-    content:
-      '本届校园文化活动共设 8 个项目，报名截止时间为 10 月 10 日 18:00，欢迎各班级积极组织参与。',
-  },
-  {
-    id: 10,
-    title: '学生会例会时间调整说明',
-    type: '通知',
-    author: '刘皖',
-    publishTime: '2026-09-28 16:40',
-    top: false,
-    content: '因课程安排冲突，本周例会调整至周三 19:00，地点仍为综合楼 302 教室。',
-  },
-  {
-    id: 9,
-    title: '学生考勤管理制度（修订版）',
-    type: '制度',
-    author: '张晶',
-    publishTime: '2026-09-25 11:20',
-    top: false,
-    content: '本次修订主要明确请假审批流程与销假要求，自发布之日起执行。',
-  },
-  {
-    id: 8,
-    title: '国庆假期值班安排',
-    type: '通知',
-    author: '刘皖',
-    publishTime: '2026-09-23 08:50',
-    top: false,
-    content: '假期期间每日安排 2 名同学值班，具体名单见附件。',
-  },
-  {
-    id: 7,
-    title: '宿舍卫生检查结果公示',
-    type: '通知',
-    author: '罗欣雨',
-    publishTime: '2026-09-20 10:00',
-    top: false,
-    content: '本次检查共评出优秀宿舍 12 间，具体名单已张贴于宿舍楼下公告栏。',
-  },
-  {
-    id: 6,
-    title: '志愿服务招募通知',
-    type: '活动',
-    author: '张晶',
-    publishTime: '2026-09-18 15:10',
-    top: false,
-    content: '社区支教志愿服务招募 20 人，服务时间为每周六上午。',
-  },
-  {
-    id: 5,
-    title: '关于使用统一开发规范的说明',
-    type: '制度',
-    author: '刘皖',
-    publishTime: '2026-09-15 09:00',
-    top: false,
-    content: '为保证代码风格一致，全组统一使用 Prettier 格式化，颜色统一走 CSS 变量。',
-  },
-  {
-    id: 4,
-    title: '新生入学教育安排',
-    type: '通知',
-    author: '罗欣雨',
-    publishTime: '2026-09-12 13:45',
-    top: false,
-    content: '新生入学教育分三批进行，具体时间见各班级群通知。',
-  },
-  {
-    id: 3,
-    title: '班级篮球赛报名通知',
-    type: '活动',
-    author: '张晶',
-    publishTime: '2026-09-10 17:30',
-    top: false,
-    content: '篮球赛即日起接受报名，每队 5 至 8 人，报名请联系体育委员。',
-  },
-  {
-    id: 2,
-    title: '关于奖学金评定工作的通知',
-    type: '通知',
-    author: '刘皖',
-    publishTime: '2026-09-08 10:20',
-    top: false,
-    content: '奖学金评定材料提交截止时间为 9 月 20 日，请务必按时提交。',
-  },
-  {
-    id: 1,
-    title: '新学期学生干部名单公布',
-    type: '通知',
-    author: '罗欣雨',
-    publishTime: '2026-09-01 09:00',
-    top: false,
-    content: '经个人申报与面试考评，新学期学生干部名单现予公布。',
-  },
-])
+/** 谁能发布公告（见 src/composables/permissions.js） */
+const { canDo } = usePermissions()
+
+/**
+ * 公告数据统一放在 @/mock —— 首页的「最新公告」和四个统计数字也读那一份。
+ * 以前这里内联了一整份，首页又另手抄了一份，
+ * 结果同一个「校园文化活动报名开始啦」首页写 09-20、这里写 10-01。
+ * 数据只能有一个源头，否则改动时总有一边忘掉。
+ */
+const allNotices = ref(NOTICES)
 
 /** ---------- 搜索 / 筛选 ---------- */
 const keyword = ref('')

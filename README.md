@@ -123,6 +123,9 @@ color: #303133;
 ```
 
 - 组件优先使用 Element Plus 现成组件，不要手写重复的表格 / 弹窗。
+- **假数据统一写在 `src/mock/index.js`，不要在自己页面里再抄一份。**
+  以前首页写「公告 3 条」、公告页实际 12 条，就是因为各处各写一份。
+  数字一律从 `@/mock` 算出来，不要手写。
 - 页面专属样式写在对应 `.vue` 文件的 `<style scoped>` 中，不要污染全局样式。
 - 提交前保存文件会自动格式化（VS Code 已配置 Prettier），也可以手动执行 `npm run format`。
 
@@ -191,9 +194,12 @@ zuoye/
 │   │   ├── aiAgent.js          AI 对话状态 + 填表动作总线 + 本地兜底
 │   │   ├── useSpeechInput.js   语音输入（浏览器 Web Speech API 封装）
 │   │   ├── notifications.js    顶栏通知中心（未读数 + 已读状态）
-│   │   └── userProfile.js      当前用户显示名称（localStorage 持久化）
+│   │   ├── permissions.js      权限能力表（前端控制，真正拦人靠后端）
+│   │   └── userProfile.js      当前用户显示名称 + 角色（localStorage 持久化）
 │   ├── layout/
-│   │   └── BasicLayout.vue     整体布局：侧边栏 + 顶栏 + 面包屑 + 内容区
+│   │   └── BasicLayout.vue     整体布局：侧边栏 + 顶栏（含通知中心）+ 面包屑 + 内容区
+│   ├── mock/
+│   │   └── index.js            ★ 全站唯一假数据源（公告 / 待办 / 请假 / 成员 + 算出来的统计）
 │   ├── router/
 │   │   └── index.js            路由表（刘皖统一维护）
 │   ├── App.vue
@@ -205,6 +211,7 @@ zuoye/
 │   ├── .env                    本机配置（已被 gitignore，不提交）
 │   └── .env.example            配置模板
 ├── docs/
+│   ├── screenshots/            五张页面截图（README 第八节在用）
 │   ├── 项目框架.md             架构与分工说明
 │   ├── AI智能体接入指南.md     AI 助手：架构、契约、扩展、踩坑
 │   └── AI填表方案.md           动手前的方案稿（存档）
@@ -223,14 +230,27 @@ zuoye/
 
 ## 八、项目截图
 
-> 答辩前补充。
+> 图片在 `docs/screenshots/`，1440 宽，点开可看大图。
 
-| 页面 | 截图 |
-| --- | --- |
-| 工作台首页 | 待补充 |
-| 公告通知 | 待补充 |
-| 请假申请 | 待补充 |
-| 待办事项 | 待补充 |
+**工作台** —— 欢迎条 + 每日打卡（带定位）+ 数据卡片 + 快捷入口 + 最新公告
+
+![工作台](docs/screenshots/01-dashboard.png)
+
+**公告通知** —— 搜索 + 类型筛选 + 分页 + 详情弹窗
+
+![公告通知](docs/screenshots/02-notice.png)
+
+**请假申请** —— 表单校验 + 日期联动 + 合计天数 + 申请记录
+
+![请假申请](docs/screenshots/03-leave.png)
+
+**待办事项** —— 统计 + 日程日历 + 筛选 + 表格
+
+![待办事项](docs/screenshots/04-todo.png)
+
+**AI 助手** —— 独立页面，和右下角悬浮窗共用同一份对话
+
+![AI 助手](docs/screenshots/05-assistant.png)
 
 ## 九、开发进度
 
@@ -254,6 +274,10 @@ zuoye/
 - [x] 工作台每日打卡（带地理位置）
 - [x] 打卡地点显示地名（高德逆地理编码，需在 `server/.env` 填 `AMAP_KEY`）
 - [x] 顶栏通知中心（未读红点 + 已读状态）
+- [x] 假数据统一到 `src/mock/`（首页四个数字改为从同一份数据算出来）
+- [x] 五个页面的截图（`docs/screenshots/`）
+- [x] 权限能力表（`src/composables/permissions.js`，公告页的「发布公告」按角色显示）
 - [ ] AI 代理部署到线上服务器
 - [ ] 后端接口对接
-- [ ] 把假数据换成数据库（前端 4 处 + `server/mock_data.py` 一起换）
+- [ ] 把假数据换成数据库（`src/mock/` 和 `server/mock_data.py` 一起换）
+- [ ] 队友页面里内联的假数据改读 `src/mock/`（待办页 / 请假页，得她们自己改）

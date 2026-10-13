@@ -33,11 +33,12 @@
  * 本页已拆成四个子组件，都在 ./components/ 下：
  * CheckIn（每日打卡）、StatCards（数据卡片）、QuickActions（快捷入口）、RecentNotices（最新公告）
  */
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, List, User, Warning } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
+import { dashboardSummary, latestNotices } from '@/mock'
 import CheckIn from './components/CheckIn.vue'
 import StatCards from './components/StatCards.vue'
 import QuickActions from './components/QuickActions.vue'
@@ -46,51 +47,50 @@ import RecentNotices from './components/RecentNotices.vue'
 const router = useRouter()
 const { userName, userInitial } = useUserProfile()
 
-/** 假数据：统计数据 */
-const data = ref({
-  todo: 5,
-  leave: 2,
-  notice: 3,
-  member: 4,
-})
+/**
+ * 四个数字全部从 @/mock 里【数出来】，不再手写。
+ * 以前这里是写死的 {todo:5, leave:2, notice:3, member:4}，
+ * 而公告页实际有 12 条、待办页有 6 条 —— 首页和页面直接对不上。
+ */
+const summary = computed(() => dashboardSummary())
 
 const stats = computed(() => [
   {
     label: '待办事项',
-    value: data.value.todo,
+    value: summary.value.todo,
     icon: List,
     color: 'var(--st-primary)',
     bg: 'var(--st-primary-light)',
   },
   {
     label: '请假申请',
-    value: data.value.leave,
+    value: summary.value.leave,
     icon: Document,
     color: 'var(--st-warning)',
     bg: '#fdf6ec',
   },
   {
     label: '公告数量',
-    value: data.value.notice,
+    value: summary.value.notice,
     icon: Warning,
     color: 'var(--st-danger)',
     bg: '#fef0f0',
   },
   {
     label: '小组成员',
-    value: data.value.member,
+    value: summary.value.member,
     icon: User,
     color: 'var(--st-success)',
     bg: '#f0f9eb',
   },
 ])
 
-/** 假数据：最新公告 */
-const recentNotices = ref([
-  { id: 3, title: '关于期末学生工作总结的通知', publishTime: '2026-10-02 09:15', top: true },
-  { id: 2, title: '学生会例会时间调整说明', publishTime: '2026-09-28 16:40', top: false },
-  { id: 1, title: '校园文化活动报名开始啦', publishTime: '2026-09-20 10:00', top: false },
-])
+/**
+ * 最新公告：直接从公告页那份数据里取前 3 条。
+ * 以前首页另手写了一份，结果「校园文化活动报名开始啦」
+ * 首页写 09-20、公告页写 10-01 —— 同一个活动两个日期。
+ */
+const recentNotices = computed(() => latestNotices(3))
 
 const todayText = computed(() =>
   new Date().toLocaleDateString('zh-CN', {
@@ -106,10 +106,14 @@ function onNavigate(path) {
   router.push(path)
 }
 
-/** 模拟刷新：数字随机变一下，方便答辩演示 */
+/**
+ * 「刷新数据」：现在没有后端可请求，而上面的数字本来就是实时算出来的，
+ * 所以这里只报个到。
+ * ⚠️ 以前这里写的是 data.value.todo = Math.random()*10 —— 点一下数字变一个随机值，
+ * 老师点一下就穿帮了。宁可什么都不做，也别造假。
+ */
 function onRefresh() {
-  data.value.todo = Math.floor(Math.random() * 10) + 1
-  ElMessage.success('数据已刷新')
+  ElMessage.success('数据已是最新')
 }
 </script>
 

@@ -3,9 +3,13 @@
 ==============================
 
 为什么会有这个文件：
-    现在待办 / 公告 / 请假记录都是【写死在各个 .vue 页面里的假数据】，
-    后端根本看不到它们。AI 要回答「我还有哪些待办」，得先有数据可查，
-    所以这里【抄了一份】和前端一模一样的假数据。
+    现在待办 / 公告 / 请假记录是【写死在各个 .vue 页面里的假数据】，
+    后端根本看不到它们。AI 要回答「我还有哪些待办」，得先有数据可查。
+
+    ⚠️ 前端的唯一数据源现在是 `src/mock/index.js`（首页数字、公告页都读它）。
+    后端是 Python，没法 import 一个 .js，所以这里只能【手抄一份】。
+    改数据请先改 `src/mock/index.js`，再同步到这里 —— 以后端为准是反的，
+    因为用户看到的是前端。
 
 ⚠️ 这是临时方案，别当真数据用：
     后端一接上数据库，就应该删掉这个文件，改成查库，比如
@@ -17,9 +21,9 @@
     所以：前端假数据改了，记得来这里同步改。
 
 对应的前端文件（数据源头在那边，以那边为准）：
-    zhangjing/views/todo/index.vue      → TODOS
-    liuwan/views/notice/index.vue       → NOTICES
-    luoxinyu/views/leave/index.vue      → LEAVE_RECORDS
+    src/mock/index.js                  ← 唯一数据源，改这里
+    zhangjing/views/todo/index.vue     ← ⚠️ 张晶的页面里还内联着一份 TODOS
+    luoxinyu/views/leave/index.vue     ← ⚠️ 罗欣雨的页面里还内联着一份记录
 """
 
 from datetime import date
