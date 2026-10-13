@@ -1014,7 +1014,9 @@ def amap_reverse(lat, lng):
                 "key": AMAP_KEY,
                 # ⚠️ 高德要的是「经度,纬度」，跟大家习惯的「纬度,经度」反着，别写错
                 "location": f"{lng},{lat}",
-                "extensions": "base",
+                # ⚠️ 必须是 all：只有它才会返回附近的 pois（学校、大楼、商场）。
+                #    一开始写的是 base，于是下面「POI 优先」那段代码永远拿不到数据 —— 白写。
+                "extensions": "all",
                 "radius": 300,
             },
             timeout=8,

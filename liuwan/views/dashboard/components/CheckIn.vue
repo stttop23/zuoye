@@ -93,8 +93,14 @@ const subText = computed(() => {
   if (place.error) return `${todayText.value} · ${place.error}`
 
   // 有地名就优先显示地名（「浙江大学玉泉校区」比一串数字好认得多）；
+  // 顺序：附近 POI 名 > 拼好的短地址 > 完整地址 > 坐标。
+  // 「短地址」是后端专门拼的（市+区+街道），比完整地址短得多，窄屏上不会换行。
   // 拿不到地名就退回坐标 —— 退回去是常态，不算出错。
-  const where = place.poi || place.address || `${place.lat}, ${place.lng}（±${place.accuracy} 米）`
+  const where =
+    place.poi ||
+    place.short ||
+    place.address ||
+    `${place.lat}, ${place.lng}（±${place.accuracy} 米）`
   return `${todayText.value} · ${where}`
 })
 
