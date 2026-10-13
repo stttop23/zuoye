@@ -101,12 +101,39 @@ npm run dev
 
 浏览器打开终端中显示的地址（默认 <http://localhost:5173>）即可看到页面。
 
+### 想给别人看（不部署也够用）
+
+**方案一：同一局域网，手机 / 队友直接打开 —— 顺便演示移动端**
+
+`npm run dev` 起来后，终端里除了 `Local` 还会有一行 `Network: http://192.168.x.x:5173/`
+（`vite.config.js` 里已经配好 `server.host: true`，**不用加任何参数**）。
+把那行地址发到手机上，**连同一个 WiFi 就能直接打开**，
+会自动切成抽屉侧边栏、公告页变标题列表那一套 —— 就是第八节那两张手机截图的状态。
+
+**方案二：跑「打包之后的真实产物」**
+
+```bash
+npm run build     # 打包到 dist/
+npm run preview   # 起服务跑 dist/，默认 http://localhost:4173/
+```
+
+`dev` 是开发模式（带热更新），`preview` 跑的是 `dist/` 里的真产物。
+答辩前跑一遍，能提前发现「只有打包后才暴露」的问题。
+
+实测：**`preview` 同样代理 `/api`**（Vite 的 preview 服务会沿用 `server.proxy`），
+所以只要 Flask（`python server/app.py`）和 Ollama 开着，
+**`preview` 下 AI 也是完整的**，不会降级。
+
+> 演示建议：常规用 `npm run dev`（临时要改代码不用重新构建）；
+> 想更接近「真上线」的观感或看性能，就用 `npm run preview`。
+>
+> ⛔ **本项目不做线上部署** —— 原因和替代方案见 `docs/部署到服务器.md` 开头。
+
 其他命令：
 
 ```bash
-npm run build     # 打包生产版本，产物在 dist/
-npm run preview   # 本地预览打包结果
-npm run format    # 一键格式化 src 下所有代码
+npm run format        # 格式化四个目录下的代码（src / liuwan / luoxinyu / zhangjing）
+npm run format:check  # 只检查不修改，提交前跑一下，看谁把格式写乱了
 ```
 
 ## 六、团队开发规范
@@ -253,10 +280,13 @@ zuoye/
 │   ├── requirements.txt
 │   ├── .env                    本机配置（已被 gitignore，不提交）
 │   └── .env.example            配置模板
+├── deploy/
+│   └── nginx-zuoye.conf        ⛔ 暂不用（部署留档，含 SPA 路由坑与 HTTPS 配置）
 ├── docs/
-│   ├── screenshots/            五张页面截图（README 第八节在用）
+│   ├── screenshots/            页面截图（README 第八节在用）
 │   ├── 项目框架.md             架构与分工说明
 │   ├── AI智能体接入指南.md     AI 助手：架构、契约、扩展、踩坑
+│   ├── 部署到服务器.md         ⛔ 暂不用（部署留档，写了线上会降级成什么样）
 │   └── AI填表方案.md           动手前的方案稿（存档）
 ├── .prettierrc.json            格式化规则
 ├── index.html
@@ -333,7 +363,9 @@ zuoye/
 - [x] AI 悬浮球可拖动 + 边缘吸附（位置记在 localStorage）
 - [x] 待办事项左滑操作（大屏改为按钮直排；抽出 `src/components/SwipeRow.vue`）
 - [x] 公告页手机版只显示标题（断点判断抽成 `src/composables/useMediaQuery.js`）
-- [ ] AI 代理部署到线上服务器
+- ⛔ **不部署到线上服务器**（2026-10-13 决定）：模型跑在本机，挂上去 AI 会降级成本地规则、
+  打卡定位还必须有 https，演示效果反而比本机差。**演示就用本机 `npm run dev`。**
+  部署步骤留着存档：`docs/部署到服务器.md` + `deploy/nginx-zuoye.conf`
 - [ ] 后端接口对接
 - [ ] 把假数据换成数据库（`src/mock/` 和 `server/mock_data.py` 一起换）
 - [ ] 队友页面里内联的假数据改读 `src/mock/`（待办页 / 请假页，得她们自己改）
