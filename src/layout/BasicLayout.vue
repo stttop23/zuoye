@@ -676,11 +676,17 @@ async function logout() {
    只改布局与间隔，不动任何业务逻辑。
    ============================================================ */
 
-/* 抽屉打开时后面的遮罩 */
+/*
+ * 手机端抽屉的遮罩（点一下就关）。
+ * ⚠️ 层级必须夹在中间：浮球（1500）< 遮罩（1700）< 抽屉（1800）< Element Plus 浮层（2000 起）。
+ * 原来写的是 2000 / 2100，结果**抽屉里点出来的下拉菜单被抽屉自己盖住了**
+ * （EP 下拉实测 z-index 2024 < 2100）—— 看着就是「点了没反应」。
+ * 注意 EP 的浮层是从 2000 开始递增的，所以这两个值只能比 2000 小。
+ */
 .layout__mask {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: 1700;
   background: rgba(16, 42, 82, 0.42);
   backdrop-filter: blur(2px);
 }
@@ -703,7 +709,7 @@ async function logout() {
     top: 0;
     bottom: 0;
     left: 0;
-    z-index: 2100;
+    z-index: 1800;
     width: 220px !important;
     transform: translateX(-100%);
     transition: transform var(--st-duration-drawer) var(--st-ease);
