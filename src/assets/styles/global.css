@@ -30,10 +30,22 @@ a {
 
 /* 页面主标题 */
 .page-title {
+  position: relative;
   margin: 0;
   font-size: 20px;
   font-weight: 600;
   color: var(--st-text-primary);
+}
+
+/* 标题下面那根渐变小横条：不占宽度，但一眼能看到「这是本页标题」 */
+.page-title::after {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 3px;
+  margin-top: 6px;
+  background: var(--st-gradient-brand);
+  border-radius: var(--st-radius-pill);
 }
 
 /* 页面副标题 / 说明文字 */
@@ -67,15 +79,264 @@ a {
 
 /* 滚动条美化（可选，不影响功能） */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
+  background: #d8dee9;
+  border: 2px solid transparent;
+  border-radius: var(--st-radius-pill);
+  background-clip: content-box;
+  transition: background-color var(--st-duration-base) var(--st-ease);
+}
+
+::-webkit-scrollbar-thumb:hover {
   background: var(--st-text-placeholder);
-  border-radius: var(--st-radius-sm);
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* 选中文字的颜色，跟主色呼应 */
+::selection {
+  color: var(--st-text-primary);
+  background: var(--st-primary-glow);
+}
+
+/* ============================================================
+   动效（关键帧 + 工具类）
+   ------------------------------------------------------------
+   规矩：**动画时长都从下面这几个变量里取**，不要各写一个 0.3s / 0.5s。
+   节奏不统一的界面，看起来比不动还乱。
+   ============================================================ */
+@keyframes st-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes st-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 带一点回弹的「弹出来」，适合图标、徽标 */
+@keyframes st-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 轻轻呼吸，给需要「活着」的图标用 */
+@keyframes st-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* 骨架屏扫光 */
+@keyframes st-shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+/* 入场工具类：`both` 很关键，不然动画开始前元素会先闪一下 */
+.st-fade-up {
+  animation: st-fade-up var(--st-duration-slow) var(--st-ease) both;
+}
+
+.st-fade-in {
+  animation: st-fade-in var(--st-duration-slow) var(--st-ease) both;
+}
+
+.st-pop {
+  animation: st-pop var(--st-duration-base) var(--st-ease-back) both;
+}
+
+/*
+ * 错峰入场：一排卡片挨个出现，比「呼啦一下全出来」有节奏。
+ * 用法：<div class="st-fade-up st-delay-2">
+ */
+.st-delay-1 {
+  animation-delay: 0.06s;
+}
+.st-delay-2 {
+  animation-delay: 0.12s;
+}
+.st-delay-3 {
+  animation-delay: 0.18s;
+}
+.st-delay-4 {
+  animation-delay: 0.24s;
+}
+.st-delay-5 {
+  animation-delay: 0.3s;
+}
+.st-delay-6 {
+  animation-delay: 0.36s;
+}
+
+/* ============================================================
+   页面切换过渡
+   ------------------------------------------------------------
+   配合 BasicLayout 里的 <transition name="page">。
+   写在全局是因为 transition 的类名是加到**子组件根元素**上的，
+   放在 scoped 里容易因为作用域属性对不上而失效。
+   ============================================================ */
+.page-enter-active {
+  transition:
+    opacity var(--st-duration-base) var(--st-ease),
+    transform var(--st-duration-base) var(--st-ease);
+}
+
+/* 出去的时候快一点，不然会觉得换了半天 */
+.page-leave-active {
+  transition:
+    opacity var(--st-duration-fast) var(--st-ease),
+    transform var(--st-duration-fast) var(--st-ease);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* ============================================================
+   Element Plus 统一微调
+   ------------------------------------------------------------
+   这些是**全局覆盖**，改一处所有页面一起受益。
+   只调观感和手感，不动任何布局尺寸，所以不会把队友的页面弄乱。
+   ============================================================ */
+:root {
+  /* 让 EP 的输入框 / 按钮圆角跟我们的令牌对齐 */
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+}
+
+/* 表格悬停：用 EP 自己的变量改，不去覆写它的样式，以后升级也不怕 */
+.el-table {
+  --el-table-row-hover-bg-color: var(--st-primary-lighter);
+  --el-table-header-bg-color: #fafbfd;
+  --el-table-border-color: var(--st-border-color-hair);
+}
+
+/* 卡片：阴影和位移都平滑过渡，不再是一下子跳过去 */
+.el-card {
+  transition:
+    box-shadow var(--st-duration-base) var(--st-ease),
+    transform var(--st-duration-base) var(--st-ease),
+    border-color var(--st-duration-base) var(--st-ease);
+}
+
+/* 按钮：按下时轻轻缩一下，手感更「实」 */
+.el-button {
+  transition:
+    transform var(--st-duration-fast) var(--st-ease),
+    box-shadow var(--st-duration-base) var(--st-ease),
+    background-color var(--st-duration-fast) var(--st-ease),
+    border-color var(--st-duration-fast) var(--st-ease),
+    color var(--st-duration-fast) var(--st-ease);
+}
+
+.el-button:active {
+  transform: scale(0.97);
+}
+
+/* 表格里那种纯文字按钮，缩一下会显得在抖，就别缩了 */
+.el-button.is-link:active,
+.el-button.is-text:active {
+  transform: none;
+}
+
+/* 输入框聚焦：一圈柔光，比粗边框斯文 */
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus,
+.el-select .el-input.is-focus .el-input__wrapper {
+  box-shadow:
+    0 0 0 1px var(--st-primary) inset,
+    var(--st-shadow-glow) !important;
+}
+
+/* 弹层：圆一点、浮一点，别贴着屏幕边 */
+.el-popper.is-light,
+.el-select__popper,
+.el-message-box,
+.el-dialog {
+  border-radius: var(--st-radius-lg);
+}
+
+.el-popper.is-light,
+.el-select__popper {
+  box-shadow: var(--st-shadow-float);
+}
+
+/* 分页按钮 */
+.el-pagination button,
+.el-pager li {
+  border-radius: var(--st-radius-sm);
+  transition:
+    background-color var(--st-duration-fast) var(--st-ease),
+    color var(--st-duration-fast) var(--st-ease);
+}
+
+/* 标签圆一点 */
+.el-tag {
+  border-radius: var(--st-radius-sm);
+}
+
+/*
+ * ⭐ 无障碍：系统开了「减少动态效果」时，把所有动画关掉。
+ * 有人会因为前庭功能障碍被动画弄晕，这是真实存在的需求，
+ * 而且写起来就这几行。答辩讲这一条会加分。
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    /*
+     * ⚠️ 这行不能漏！只清 duration 不够 ——
+     * 错峰入场用的 animation-delay（0.06s~0.36s）还在，
+     * 于是开了「减少动效」的人反而会看到一段长短不一的空白。
+     */
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
 }

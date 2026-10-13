@@ -50,6 +50,44 @@ onAgentCloseRequest(() => {
   width: 52px;
   height: 52px;
   box-shadow: 0 6px 18px rgba(64, 158, 255, 0.35);
+  transition:
+    transform var(--st-duration-base) var(--st-ease-back),
+    box-shadow var(--st-duration-base) var(--st-ease);
+}
+
+/* 悬停时放大 + 阴影拉深，让它看起来「能点」 */
+.ai-fab :deep(.el-button:hover) {
+  transform: scale(1.1);
+  box-shadow: 0 10px 26px rgba(64, 158, 255, 0.45);
+}
+
+.ai-fab :deep(.el-button:active) {
+  transform: scale(0.98);
+}
+
+/*
+ * 平时轻轻呼吸（一呼一吸 3s），提醒用户「我在这儿」。
+ * 只动光晕、不动位置，不然一直抖很吵。
+ */
+.ai-fab :deep(.el-button) {
+  animation: ai-fab-breathe 3s ease-in-out infinite;
+}
+
+@keyframes ai-fab-breathe {
+  0%,
+  100% {
+    box-shadow: 0 6px 18px rgba(64, 158, 255, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 6px 18px rgba(64, 158, 255, 0.3),
+      0 0 0 10px rgba(64, 158, 255, 0.08);
+  }
+}
+
+/* 鼠标移上去就停下呼吸，专心响应悬停 */
+.ai-fab :deep(.el-button:hover) {
+  animation: none;
 }
 
 /* 抽屉内容由 AiChatPanel 自己排版，这里把内边距清掉 */

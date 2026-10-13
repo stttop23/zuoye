@@ -1,9 +1,14 @@
 <template>
   <el-container class="layout">
     <!-- ==================== 左侧菜单 ==================== -->
-    <el-aside :width="isCollapse ? '64px' : '220px'" class="layout__aside">
+    <el-aside
+      :width="isCollapse ? '64px' : '220px'"
+      :class="['layout__aside', { 'is-collapsed': isCollapse }]"
+    >
       <div class="layout__logo">
-        <el-icon class="layout__logo-icon" :size="22"><School /></el-icon>
+        <span class="layout__logo-mark">
+          <el-icon :size="18"><School /></el-icon>
+        </span>
         <span v-show="!isCollapse" class="layout__logo-text">学生工作管理系统</span>
       </div>
 
@@ -92,10 +97,13 @@
 
       <!-- ==================== 内容区 ==================== -->
       <el-main class="layout__main">
+        <!-- 切换页面时淡入淡出 + 轻微上移，比「啪」一下换掉有质感 -->
         <router-view v-slot="{ Component }">
-          <keep-alive>
-            <component :is="Component" />
-          </keep-alive>
+          <transition name="page" mode="out-in">
+            <keep-alive>
+              <component :is="Component" />
+            </keep-alive>
+          </transition>
         </router-view>
       </el-main>
     </el-container>
@@ -208,9 +216,9 @@ async function saveProfile() {
 
 /* ---------- 侧边栏 ---------- */
 .layout__aside {
-  background: var(--st-bg-card);
-  border-right: 1px solid var(--st-border-color-light);
-  transition: width 0.25s;
+  background: var(--st-gradient-sidebar);
+  border-right: 1px solid var(--st-border-color-hair);
+  transition: width var(--st-duration-base) var(--st-ease);
   overflow: hidden;
 }
 
@@ -219,19 +227,105 @@ async function saveProfile() {
   align-items: center;
   gap: 10px;
   height: var(--st-header-height);
-  padding: 0 18px;
-  color: var(--st-primary);
+  padding: 0 16px;
   white-space: nowrap;
-  border-bottom: 1px solid var(--st-border-color-light);
+  border-bottom: 1px solid var(--st-border-color-hair);
+}
+
+/* logo 图标做成一块渐变小方块，比裸图标有品牌感 */
+.layout__logo-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #fff;
+  background: var(--st-gradient-logo);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px var(--st-primary-glow);
+  transition: transform var(--st-duration-base) var(--st-ease-back);
+}
+
+.layout__logo:hover .layout__logo-mark {
+  transform: rotate(-8deg) scale(1.06);
 }
 
 .layout__logo-text {
   font-size: 15px;
   font-weight: 600;
+  color: var(--st-text-primary);
 }
 
+/* ==================== 菜单 ==================== */
 .layout__menu {
+  padding: 8px 0;
   border-right: none;
+  background: transparent;
+}
+
+/* 每个菜单项做成胶囊，悬停时往右轻轻挪一下 */
+.layout__menu :deep(.el-menu-item) {
+  position: relative;
+  height: 44px;
+  margin: 4px 10px;
+  border-radius: var(--st-radius-sm);
+  transition:
+    background-color var(--st-duration-base) var(--st-ease),
+    color var(--st-duration-base) var(--st-ease),
+    transform var(--st-duration-base) var(--st-ease);
+}
+
+/* 左侧那根「长出来」的指示条 —— 用高度而非透明度，看着更利塔 */
+.layout__menu :deep(.el-menu-item)::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -8px;
+  width: 3px;
+  height: 0;
+  background: var(--st-primary);
+  border-radius: var(--st-radius-pill);
+  transform: translateY(-50%);
+  transition: height var(--st-duration-base) var(--st-ease-back);
+}
+
+.layout__menu :deep(.el-menu-item.is-active)::before {
+  height: 18px;
+}
+
+.layout__menu :deep(.el-menu-item:hover) {
+  color: var(--st-primary);
+  background: var(--st-primary-lighter);
+  transform: translateX(3px);
+}
+
+.layout__menu :deep(.el-menu-item.is-active) {
+  color: var(--st-primary);
+  font-weight: 600;
+  background: var(--st-primary-light);
+}
+
+.layout__menu :deep(.el-menu-item .el-icon) {
+  transition: transform var(--st-duration-base) var(--st-ease-back);
+}
+
+.layout__menu :deep(.el-menu-item:hover .el-icon) {
+  transform: scale(1.15);
+}
+
+/* 折叠的时候去掉左右外边距和指示条，不然图标会偏 */
+.layout__aside.is-collapsed .layout__menu :deep(.el-menu-item) {
+  margin: 4px 0;
+}
+
+.layout__aside.is-collapsed .layout__menu :deep(.el-menu-item)::before {
+  display: none;
+}
+
+/* 折叠时内容居中由 EP 自己管，这里只把悬停位移取消，免得看着在抖 */
+.layout__aside.is-collapsed .layout__menu :deep(.el-menu-item:hover) {
+  transform: none;
 }
 
 /* ---------- 顶栏 ---------- */
@@ -240,8 +334,8 @@ async function saveProfile() {
   align-items: center;
   justify-content: space-between;
   height: var(--st-header-height);
-  background: var(--st-bg-card);
-  border-bottom: 1px solid var(--st-border-color-light);
+  background: var(--st-gradient-topbar);
+  border-bottom: 1px solid var(--st-border-color-hair);
 }
 
 .layout__header-left {
@@ -253,10 +347,14 @@ async function saveProfile() {
 .layout__collapse-btn {
   color: var(--st-text-regular);
   cursor: pointer;
+  transition:
+    transform var(--st-duration-base) var(--st-ease-back),
+    color var(--st-duration-fast) var(--st-ease);
 }
 
 .layout__collapse-btn:hover {
   color: var(--st-primary);
+  transform: scale(1.15);
 }
 
 .layout__header-right {
@@ -270,7 +368,15 @@ async function saveProfile() {
 }
 
 .layout__avatar {
-  background: var(--st-primary);
+  font-weight: 600;
+  color: #fff;
+  background: var(--st-gradient-brand);
+  box-shadow: 0 4px 10px var(--st-primary-glow);
+  transition: transform var(--st-duration-base) var(--st-ease-back);
+}
+
+.profile-button:hover .layout__avatar {
+  transform: scale(1.08);
 }
 
 .profile-button {
@@ -294,8 +400,23 @@ async function saveProfile() {
   align-items: center;
   padding: 6px 8px;
   color: var(--st-text-regular);
-  border-radius: 6px;
+  border-radius: var(--st-radius-sm);
   cursor: pointer;
+  transition:
+    transform var(--st-duration-base) var(--st-ease-back),
+    background-color var(--st-duration-fast) var(--st-ease),
+    color var(--st-duration-fast) var(--st-ease);
+}
+
+/* 悬停时铃铛「歪一下」，有点小脾气 */
+.layout__bell-btn:hover {
+  color: var(--st-primary);
+  background: var(--st-primary-lighter);
+  transform: scale(1.08) rotate(-8deg);
+}
+
+.layout__bell-btn:active {
+  transform: scale(0.96);
 }
 
 .layout__bell-btn:hover {

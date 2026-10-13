@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard">
     <!-- ==================== 欢迎条 ==================== -->
-    <el-card shadow="never" class="welcome">
+    <el-card shadow="never" class="welcome st-fade-up">
       <div class="welcome__inner">
         <el-avatar :size="56" class="welcome__avatar">{{ userInitial }}</el-avatar>
         <div>
@@ -11,17 +11,18 @@
       </div>
     </el-card>
 
-    <!-- ==================== 每日打卡（子组件） ==================== -->
-    <CheckIn />
+    <!-- 下面几块挨个淡入上移，带一点节奏（.st-delay-N 在 global.css 里） -->
+    <CheckIn class="st-fade-up st-delay-1" />
 
-    <!-- ==================== 数据卡片（子组件） ==================== -->
     <StatCards :stats="stats" />
 
-    <!-- ==================== 快捷入口（子组件） ==================== -->
-    <QuickActions @navigate="onNavigate" @refresh="onRefresh" />
+    <QuickActions class="st-fade-up st-delay-3" @navigate="onNavigate" @refresh="onRefresh" />
 
-    <!-- ==================== 最新公告（子组件） ==================== -->
-    <RecentNotices :notices="recentNotices" @view-all="onNavigate('/notice')" />
+    <RecentNotices
+      class="st-fade-up st-delay-4"
+      :notices="recentNotices"
+      @view-all="onNavigate('/notice')"
+    />
   </div>
 </template>
 
@@ -126,19 +127,45 @@ function onRefresh() {
 
 /* ---------- 欢迎条 ---------- */
 .welcome {
-  border: none;
-  background: linear-gradient(90deg, #ecf5ff 0%, #ffffff 60%);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--st-border-color-hair);
+  background: var(--st-gradient-welcome);
+}
+
+/* 右上角一团模糊的光晕，让平面卡片多一点纵深 */
+.welcome::after {
+  content: '';
+  position: absolute;
+  top: -70px;
+  right: -50px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, var(--st-primary-glow) 0%, transparent 65%);
+  pointer-events: none;
 }
 
 .welcome__inner {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--st-gap-base);
 }
 
 .welcome__avatar {
-  background: var(--st-primary);
+  flex-shrink: 0;
   font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--st-gradient-brand);
+  box-shadow:
+    0 6px 16px var(--st-primary-glow),
+    0 0 0 4px rgba(255, 255, 255, 0.75);
+  transition: transform var(--st-duration-base) var(--st-ease-back);
+}
+
+.welcome:hover .welcome__avatar {
+  transform: scale(1.06);
 }
 
 .welcome__title {

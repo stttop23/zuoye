@@ -36,12 +36,34 @@ const emit = defineEmits(['navigate', 'refresh'])
 
 <style scoped>
 .section {
-  border: none;
+  border: 1px solid var(--st-border-color-hair);
+  box-shadow: var(--st-shadow-card);
 }
 
 .section__title {
   font-size: 15px;
   font-weight: 600;
   color: var(--st-text-primary);
+}
+
+/* 快捷入口的按钮做得比普通按钮「胖」一点，点着踏实 */
+.section :deep(.el-button) {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--st-radius-base);
+}
+
+/* 悬停时抬起来 + 图标往里滑一下，暗示「要跳走了」 */
+.section :deep(.el-button:not(.is-plain)):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(16, 42, 82, 0.14);
+}
+
+.section :deep(.el-button .el-icon) {
+  transition: transform var(--st-duration-base) var(--st-ease-back);
+}
+
+.section :deep(.el-button:hover .el-icon) {
+  transform: translateX(2px) scale(1.12);
 }
 </style>

@@ -34,7 +34,8 @@ const emit = defineEmits(['view-all'])
 
 <style scoped>
 .section {
-  border: none;
+  border: 1px solid var(--st-border-color-hair);
+  box-shadow: var(--st-shadow-card);
 }
 
 .section__title {

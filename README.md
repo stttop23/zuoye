@@ -131,7 +131,28 @@ color: #303133;
   想检查有没有漏掉的，跑 `npm run format:check`（覆盖 `src/` 和三个成员目录）。
   > ⚠️ 以前的 `format` 脚本只写了 `src/**`，**队友那三个文件夹根本不会被格式化**，已修。
 
-### 3. 提交信息规范
+### 3. 动效与设计规范
+
+界面升级过一次，动效全部走变量，**不要在自己页面里各写一个 `0.3s`**。
+节奏不统一的界面，看起来比完全不动还乱。
+
+| 想做什么 | 用什么 |
+| --- | --- |
+| 颜色 / 圆角 / 阴影 / 间距 | `variables.css` 里的 `--st-*` 变量（新增了渐变、光晕、四层阴影、动效时长） |
+| 区块淡入上移 | 加 class `st-fade-up` |
+| 一排卡片挨个出现 | 再加 `st-delay-1` ~ `st-delay-6`（错峰，别一次全冒出来） |
+| 图标 / 徽标「弹」出来 | `st-pop` |
+| 数字从 0 滚上来 | `<CountUp :value="6" />`（`src/components/CountUp.vue`） |
+| 悬停抬升 | `transform: translateY(-4px)` + `--st-shadow-hover` |
+| 缓动曲线 | `--st-ease`（标准）/ `--st-ease-back`（带一点回弹） |
+
+> ⚠️ **别漏了 `prefers-reduced-motion`。** 全局已兜底（动画时长归零），
+> 但你自己写的 `animation-delay` 也要一起清零，否则开了「减少动态效果」的人
+> 反而会看到一段空白。这个坑我们踩过，见 `global.css` 里的注释。
+> 自己用 JS 写动画（比如数字滚动）时，也要判断一下：
+> `window.matchMedia('(prefers-reduced-motion: reduce)').matches`。
+
+### 4. 提交信息规范
 
 | 前缀 | 含义 |
 | --- | --- |

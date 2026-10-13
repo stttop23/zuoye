@@ -187,7 +187,18 @@ function undo() {
 
 <style scoped>
 .check-in {
-  border: none;
+  border: 1px solid var(--st-border-color-hair);
+  box-shadow: var(--st-shadow-card);
+  transition:
+    transform var(--st-duration-base) var(--st-ease),
+    box-shadow var(--st-duration-base) var(--st-ease),
+    border-color var(--st-duration-base) var(--st-ease);
+}
+
+.check-in:hover {
+  transform: translateY(-2px);
+  border-color: var(--st-primary-glow);
+  box-shadow: var(--st-shadow-hover);
 }
 
 .check-in__row {
@@ -204,13 +215,23 @@ function undo() {
   width: 48px;
   height: 48px;
   border-radius: var(--st-radius-base);
-  background: var(--st-primary-light);
   color: var(--st-primary);
+  background: var(--st-primary-light);
+  transition:
+    background-color var(--st-duration-base) var(--st-ease),
+    color var(--st-duration-base) var(--st-ease);
 }
 
+/*
+ * 打卡成功：图标弹一下。
+ * 动画由「加上这个 class」触发，所以是打完卡才会弹，不是进页面就弹。
+ * （st-pop 定义在 global.css 里）
+ */
 .check-in__icon--done {
-  background: var(--st-bg-page);
-  color: var(--st-success);
+  color: #fff;
+  background: linear-gradient(135deg, #7ed06a 0%, #52b23a 100%);
+  box-shadow: 0 6px 16px rgba(103, 194, 58, 0.28);
+  animation: st-pop var(--st-duration-base) var(--st-ease-back) both;
 }
 
 .check-in__text {
