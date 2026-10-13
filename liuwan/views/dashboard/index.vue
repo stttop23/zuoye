@@ -125,28 +125,46 @@ function onRefresh() {
   gap: var(--st-gap-base);
 }
 
-/* ---------- 欢迎条 ---------- */
+/* ---------- 欢迎条：做成一块主视觉，不要一片死白 ---------- */
 .welcome {
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--st-border-color-hair);
-  background: var(--st-gradient-welcome);
+  border: none;
+  color: #fff;
+  background: linear-gradient(120deg, #2b7cd3 0%, #409eff 48%, #66b1ff 100%);
+  box-shadow: 0 12px 32px rgba(64, 158, 255, 0.28);
 }
 
-/* 右上角一团模糊的光晕，让平面卡片多一点纵深 */
+/* 两个半透明装饰圆：直线条里掺点弧线，整块就不呆
+   ⚠️ ::before / ::after 会盖在内容上（绝对定位的元素在普通内容之上），
+      所以下面 .welcome__inner 要给 z-index 提上来 */
+.welcome::before,
 .welcome::after {
   content: '';
   position: absolute;
-  top: -70px;
-  right: -50px;
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, var(--st-primary-glow) 0%, transparent 65%);
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 50%;
   pointer-events: none;
+}
+
+.welcome::before {
+  top: -90px;
+  right: 60px;
+  width: 240px;
+  height: 240px;
+}
+
+.welcome::after {
+  right: -60px;
+  bottom: -110px;
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.13);
 }
 
 .welcome__inner {
   position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: var(--st-gap-base);
@@ -157,28 +175,27 @@ function onRefresh() {
   font-size: 20px;
   font-weight: 600;
   color: #fff;
-  background: var(--st-gradient-brand);
-  box-shadow:
-    0 6px 16px var(--st-primary-glow),
-    0 0 0 4px rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(4px);
   transition: transform var(--st-duration-base) var(--st-ease-back);
 }
 
 .welcome:hover .welcome__avatar {
-  transform: scale(1.06);
+  transform: scale(1.06) rotate(-4deg);
 }
 
 .welcome__title {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: var(--st-text-primary);
+  color: #fff;
 }
 
 .welcome__desc {
   margin: 6px 0 0;
   font-size: 13px;
-  color: var(--st-text-secondary);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* 数据卡片、区块的样式已随子组件移走，见 ./components/ */

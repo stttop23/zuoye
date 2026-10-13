@@ -4,34 +4,68 @@
       <span class="section__title">快捷入口</span>
     </template>
 
-    <el-space wrap :size="12">
-      <el-button type="primary" @click="emit('navigate', '/notice')">
-        <el-icon><Bell /></el-icon>
-        查看公告
-      </el-button>
-      <el-button type="success" @click="emit('navigate', '/todo')">
-        <el-icon><List /></el-icon>
-        我的待办
-      </el-button>
-      <el-button type="warning" @click="emit('navigate', '/leave')">
-        <el-icon><Document /></el-icon>
-        发起请假
-      </el-button>
-      <el-button plain @click="emit('refresh')">
-        <el-icon><Refresh /></el-icon>
-        刷新数据
-      </el-button>
-    </el-space>
+    <div class="quick">
+      <button
+        v-for="action in actions"
+        :key="action.path"
+        type="button"
+        class="quick__item"
+        :style="{ '--tile-tint': action.tint, '--tile-bg': action.bg }"
+        @click="emit('navigate', action.path)"
+      >
+        <span class="quick__icon">
+          <el-icon :size="20"><component :is="action.icon" /></el-icon>
+        </span>
+        <span class="quick__label">{{ action.label }}</span>
+      </button>
+
+      <button type="button" class="quick__item quick__item--ghost" @click="emit('refresh')">
+        <span class="quick__icon">
+          <el-icon :size="20"><Refresh /></el-icon>
+        </span>
+        <span class="quick__label">刷新数据</span>
+      </button>
+    </div>
   </el-card>
 </template>
 
 <script setup>
 /**
- * 快捷入口：只负责「点哪个按钮」，跳转和刷新交给父级。
+ * 快捷入口。
+ *
+ * 原来是一排 Element Plus 按钮，四个灰边圆角框排在一起挺单调的。
+ * 改成「磁贴」：左边一块带底色的圆角图标 + 右边文字，
+ *   1) 四块颜色不同，整排有了节奏；
+ *   2) 点击热区大很多，手机上也好按；
+ *   3) 用原生 <button>，键盘 Tab 和回车照样能用。
  */
 import { Bell, Document, List, Refresh } from '@element-plus/icons-vue'
 
 const emit = defineEmits(['navigate', 'refresh'])
+
+const actions = [
+  {
+    path: '/notice',
+    label: '查看公告',
+    icon: Bell,
+    tint: 'var(--st-primary)',
+    bg: 'var(--st-primary-light)',
+  },
+  {
+    path: '/todo',
+    label: '我的待办',
+    icon: List,
+    tint: 'var(--st-success)',
+    bg: 'var(--st-success-light)',
+  },
+  {
+    path: '/leave',
+    label: '发起请假',
+    icon: Document,
+    tint: 'var(--st-warning)',
+    bg: 'var(--st-warning-light)',
+  },
+]
 </script>
 
 <style scoped>
@@ -47,23 +81,78 @@ const emit = defineEmits(['navigate', 'refresh'])
 }
 
 /* 快捷入口的按钮做得比普通按钮「胖」一点，点着踏实 */
-.section :deep(.el-button) {
-  height: 40px;
-  padding: 0 18px;
+/* 快捷入口的磁贴 */
+.quick {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.quick__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  font: inherit;
+  color: var(--st-text-primary);
+  text-align: left;
+  appearance: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #ffffff 40%, var(--tile-bg, #fff) 100%);
+  border: 1px solid var(--st-border-color-hair);
   border-radius: var(--st-radius-base);
+  transition:
+    transform var(--st-duration-base) var(--st-ease),
+    box-shadow var(--st-duration-base) var(--st-ease),
+    border-color var(--st-duration-base) var(--st-ease);
 }
 
-/* 悬停时抬起来 + 图标往里滑一下，暗示「要跳走了」 */
-.section :deep(.el-button:not(.is-plain)):hover {
+.quick__item:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 18px rgba(16, 42, 82, 0.14);
+  border-color: var(--tile-tint, var(--st-primary));
+  box-shadow: var(--st-shadow-hover);
 }
 
-.section :deep(.el-button .el-icon) {
+.quick__item:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+.quick__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--tile-tint, var(--st-text-regular));
+  background: var(--tile-bg, var(--st-bg-page));
+  border-radius: var(--st-radius-sm);
   transition: transform var(--st-duration-base) var(--st-ease-back);
 }
 
-.section :deep(.el-button:hover .el-icon) {
-  transform: translateX(2px) scale(1.12);
+.quick__item:hover .quick__icon {
+  transform: scale(1.1) rotate(-6deg);
+}
+
+.quick__label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 「刷新数据」没什么好配色，做成灰的，不要抢前三个的戏 */
+.quick__item--ghost {
+  --tile-tint: var(--st-text-secondary);
+  --tile-bg: var(--st-bg-page);
+}
+
+/* 手机上四列放不下，两列 */
+@media (max-width: 768px) {
+  .quick {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quick__label {
+    font-size: 13px;
+  }
 }
 </style>

@@ -41,9 +41,11 @@ defineProps({
 }
 
 .stat-card {
+  position: relative;
+  overflow: hidden;
   margin-bottom: var(--st-gap-base);
-  border: 1px solid var(--st-border-color-hair);
-  box-shadow: var(--st-shadow-card);
+  /* 从白渐变到各自的浅色底，四张卡颜色不一样，整排就不单调了 */
+  background: linear-gradient(135deg, #ffffff 30%, var(--card-bg, #fff) 100%);
   /* 悬停时整张卡抬起 4px，像是在告诉你「可以点」 */
   transition:
     transform var(--st-duration-base) var(--st-ease),
@@ -51,25 +53,61 @@ defineProps({
     border-color var(--st-duration-base) var(--st-ease);
 }
 
+/* 左上角一根彩色小横条，四张卡一眼能分开 */
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 56px;
+  height: 3px;
+  background: var(--card-tint, var(--st-primary));
+  border-radius: 0 var(--st-radius-pill) var(--st-radius-pill) 0;
+}
+
 .stat-card:hover {
   transform: translateY(-4px);
-  border-color: var(--st-primary-glow);
+  border-color: var(--card-tint, var(--st-primary));
   box-shadow: var(--st-shadow-hover);
 }
 
+.stat-card__watermark {
+  position: absolute;
+  right: -14px;
+  bottom: -26px;
+  color: var(--card-tint, var(--st-primary));
+  opacity: 0.09;
+  pointer-events: none;
+  transition: transform var(--st-duration-slow) var(--st-ease);
+}
+
+.stat-card:hover .stat-card__watermark {
+  transform: scale(1.12) rotate(-6deg);
+}
+
 .stat-card__inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
+.stat-card__text {
+  min-width: 0;
+}
+
 .stat-card__icon {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 48px;
   height: 48px;
+  color: var(--card-tint, var(--st-primary));
+  background: var(--card-bg, var(--st-primary-light));
   border-radius: var(--st-radius-base);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
   transition: transform var(--st-duration-base) var(--st-ease-back);
 }
 

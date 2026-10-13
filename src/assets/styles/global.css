@@ -318,6 +318,102 @@ a {
   border-radius: var(--st-radius-sm);
 }
 
+/* ============================================================
+   视觉层次：让白卡片从浅色背景里「浮」起来
+   ------------------------------------------------------------
+   以前好几个页面写的是 border:none + shadow="never"，
+   白卡片贴在浅灰底上几乎看不出边界，整页就平了。
+   这里统一给一层发丝边框 + 柔影，所有页面一起变。
+   ============================================================ */
+.el-card {
+  border: 1px solid var(--st-border-color-hair);
+}
+
+/* 和 EP 自带的 .is-never-shadow 同权重，靠引入顺序盖住它（我们的 CSS 在后面） */
+.el-card.is-never-shadow {
+  box-shadow: var(--st-shadow-card);
+}
+
+/* 卡片头部：一层极淡的渐变 + 发丝分割线，比纯白多一点层次 */
+.el-card__header {
+  padding: 14px 18px;
+  background: linear-gradient(180deg, #fafcff 0%, #ffffff 100%);
+}
+
+/* 区块标题左边加一根渐变小竖条 —— 所有页面通用 */
+.section__title {
+  position: relative;
+  padding-left: 12px;
+}
+
+.section__title::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 4px;
+  height: 16px;
+  background: var(--st-gradient-brand);
+  border-radius: var(--st-radius-pill);
+  transform: translateY(-50%);
+}
+
+/* 表头再明显一点，不然和数据行分不开 */
+.el-table {
+  --el-table-header-bg-color: #f7faff;
+  --el-table-header-text-color: #4b5563;
+}
+
+/* ============================================================
+   移动端适配（全局部分）
+   ------------------------------------------------------------
+   布局那半在 BasicLayout.vue 里（侧边栏变抽屉），
+   这里只管各个页面共用的那些东西：页头、弹窗、分页。
+   ============================================================ */
+@media (max-width: 768px) {
+  /*
+   * ⚠️ 为什么要写三层选择器 `.layout .layout__main .page-head`？
+   *    因为每个页面自己的 <style scoped> 里也写了 .page-head，
+   *    scoped 会编译成 `.page-head[data-v-xxx]`，比我单个类名更具体，
+   *    不加深一层就压不住它，flex-direction 会不生效。
+   */
+  .layout .layout__main .page-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .layout .layout__main .page-title {
+    font-size: 18px;
+  }
+
+  /* 弹窗别顶到屏幕边，也别离顶部太远 */
+  .el-dialog {
+    width: 92% !important;
+    margin-top: 8vh !important;
+  }
+
+  .el-message-box {
+    width: 88% !important;
+  }
+
+  .el-card__body {
+    padding: 16px;
+  }
+
+  /* 表格字小一号，窄屏能多塞下一列 */
+  .el-table {
+    font-size: 13px;
+  }
+
+  /* 分页在窄屏上换行居中，不然会挤成一条 */
+  .el-pagination {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    justify-content: center;
+  }
+}
+
 /*
  * ⭐ 无障碍：系统开了「减少动态效果」时，把所有动画关掉。
  * 有人会因为前庭功能障碍被动画弄晕，这是真实存在的需求，

@@ -1,20 +1,24 @@
 <template>
   <el-container class="layout">
+    <!-- 手机上侧边栏是盖在内容上的抽屉，后面垫一层遮罩，点一下就关 -->
+    <div
+      v-if="isMobile && mobileMenuOpen"
+      class="layout__mask"
+      @click="mobileMenuOpen = false"
+    />
+
     <!-- ==================== 左侧菜单 ==================== -->
-    <el-aside
-      :width="isCollapse ? '64px' : '220px'"
-      :class="['layout__aside', { 'is-collapsed': isCollapse }]"
-    >
+    <el-aside :width="sidebarWidth" :class="asideClass">
       <div class="layout__logo">
         <span class="layout__logo-mark">
           <el-icon :size="18"><School /></el-icon>
         </span>
-        <span v-show="!isCollapse" class="layout__logo-text">学生工作管理系统</span>
+        <span v-show="!sidebarCollapsed" class="layout__logo-text">学生工作管理系统</span>
       </div>
 
       <el-menu
         :default-active="route.path"
-        :collapse="isCollapse"
+        :collapse="sidebarCollapsed"
         :collapse-transition="false"
         router
         class="layout__menu"
@@ -30,8 +34,14 @@
       <!-- ==================== 顶栏 ==================== -->
       <el-header class="layout__header">
         <div class="layout__header-left">
-          <el-icon class="layout__collapse-btn" :size="20" @click="isCollapse = !isCollapse">
-            <component :is="isCollapse ? Expand : Fold" />
+          <!-- 电脑上：折叠成窄条；手机上：开/关闭抽屉 -->
+          <el-icon
+            class="layout__collapse-btn"
+            :size="20"
+            :aria-label="isMobile ? '打开菜单' : '折叠侧边栏'"
+            @click="toggleSidebar"
+          >
+            <component :is="isMobile ? Menu : isCollapse ? Expand : Fold" />
           </el-icon>
 
           <el-breadcrumb separator="/">
@@ -133,7 +143,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -145,6 +155,7 @@ import {
   Fold,
   HomeFilled,
   List,
+  Menu,
   School,
 } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
@@ -167,8 +178,80 @@ function openNotification(item) {
   if (item.path) router.push(item.path)
 }
 
-/** 侧边栏折叠状态 */
+/** 侧边栏折叠状态（电脑上才有意义） */
 const isCollapse = ref(false)
+
+/* ============================================================
+ * 移动端适配
+ * ------------------------------------------------------------
+ * 屏幕窄的时候，侧边栏不再是「折叠成窄条」，而是变成从左边滑出来的抽屉。
+ * 因为手机上窄条菜单又占位置又点不准，盖在内容上更实用。
+ * ============================================================ */
+const MOBILE_QUERY = '(max-width: 768px)'
+const isMobile = ref(false)
+const mobileMenuOpen = ref(false)
+
+let mediaQuery = null
+
+function syncIsMobile(event) {
+  isMobile.value = event.matches
+  // 回到电脑宽度就把抽屉收起来，不然会留个悬空状态
+  if (!event.matches) mobileMenuOpen.value = false
+}
+
+/** 手机上永远展开（抽屉里塞个窄条图标没有意义） */
+const sidebarCollapsed = computed(() => !isMobile.value && isCollapse.value)
+const sidebarWidth = computed(() => (sidebarCollapsed.value ? '64px' : '220px'))
+
+/*
+ * ⚠️ 这个 class 列表特意放在 computed 里，不在模板里直接写。
+ *    因为 Vue 的模板编译器【不允许属性值里换行】：
+ *      :class="[
+ *        'a', { b: c },
+ *      ]"
+ *    会直接报 “Error parsing JavaScript expression”，整个页面白屏。
+ *    而且这种错 get_errors / TS 检查都抓不到，只有跑起来才看得见。
+ */
+const asideClass = computed(() => [
+  'layout__aside',
+  {
+    'is-collapsed': sidebarCollapsed.value,
+    'is-mobile': isMobile.value,
+    'is-open': mobileMenuOpen.value,
+  },
+])
+
+/** 顶栏那个按钮：手机上开关抽屉，电脑上切换折叠 */
+function toggleSidebar() {
+  if (isMobile.value) mobileMenuOpen.value = !mobileMenuOpen.value
+  else isCollapse.value = !isCollapse.value
+}
+
+/** 按 Esc 也能关掉抽屉 */
+function onKeydown(event) {
+  if (event.key === 'Escape' && mobileMenuOpen.value) mobileMenuOpen.value = false
+}
+
+onMounted(() => {
+  mediaQuery = window.matchMedia(MOBILE_QUERY)
+  syncIsMobile(mediaQuery)
+  mediaQuery.addEventListener('change', syncIsMobile)
+  window.addEventListener('keydown', onKeydown)
+})
+
+onBeforeUnmount(() => {
+  mediaQuery?.removeEventListener('change', syncIsMobile)
+  window.removeEventListener('keydown', onKeydown)
+})
+
+// 手机上点了菜单跳走之后，抽屉得自己收起来，不然会挡住新页面
+watch(
+  () => route.path,
+  () => {
+    mobileMenuOpen.value = false
+  },
+)
+
 const profileDialogVisible = ref(false)
 const profileFormRef = ref()
 const profileForm = reactive({ name: userName.value })
@@ -212,6 +295,15 @@ async function saveProfile() {
 <style scoped>
 .layout {
   height: 100%;
+  /*
+   * 页面底色不再是死平的灰：左上角一团很淡的蓝、右上角一点绿。
+   * 淡淡的就行，目的只是让白卡片有“浮在东西上面”的感觉。
+   */
+  background-color: var(--st-bg-page);
+  background-image:
+    radial-gradient(1100px 520px at 12% -8%, rgba(64, 158, 255, 0.1), transparent 62%),
+    radial-gradient(900px 480px at 100% 2%, rgba(103, 194, 58, 0.06), transparent 58%);
+  background-attachment: fixed;
 }
 
 /* ---------- 侧边栏 ---------- */
@@ -303,7 +395,7 @@ async function saveProfile() {
 .layout__menu :deep(.el-menu-item.is-active) {
   color: var(--st-primary);
   font-weight: 600;
-  background: var(--st-primary-light);
+  background: linear-gradient(90deg, var(--st-primary-light) 0%, rgba(236, 245, 255, 0.35) 100%);
 }
 
 .layout__menu :deep(.el-menu-item .el-icon) {
@@ -427,7 +519,70 @@ async function saveProfile() {
 /* ---------- 内容区 ---------- */
 .layout__main {
   padding: var(--st-gap-base);
-  background: var(--st-bg-page);
+  /* 透明，让 .layout 上那层渐变透出来 */
+  background: transparent;
+}
+
+/* ============================================================
+   移动端
+   ------------------------------------------------------------
+   断点就一个：768px。低于它侧边栏变成抽屉。
+   只改布局与间隔，不动任何业务逻辑。
+   ============================================================ */
+
+/* 抽屉打开时后面的遮罩 */
+.layout__mask {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(16, 42, 82, 0.42);
+  backdrop-filter: blur(2px);
+  animation: st-fade-in var(--st-duration-base) var(--st-ease) both;
+}
+
+@media (max-width: 768px) {
+  /* 侧边栏改成从左侧滑出的抽屉，盖在内容上（fixed 之后不再占宽度） */
+  .layout__aside.is-mobile {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2100;
+    width: 220px !important;
+    transform: translateX(-100%);
+    transition: transform var(--st-duration-base) var(--st-ease);
+    box-shadow: var(--st-shadow-float);
+  }
+
+  .layout__aside.is-mobile.is-open {
+    transform: translateX(0);
+  }
+
+  .layout__header {
+    padding: 0 12px;
+  }
+
+  .layout__main {
+    padding: var(--st-gap-sm);
+  }
+}
+
+/* 更窄一点：名字收起来只留头像，角色下拉做窄些 */
+@media (max-width: 640px) {
+  .profile-name {
+    display: none;
+  }
+
+  .role-select {
+    width: 92px;
+  }
+}
+
+/* 再窄：面包屑也没地方放了，直接隐藏（侧边栏里本来就能看到当前在哪） */
+@media (max-width: 480px) {
+  .layout__header-left :deep(.el-breadcrumb) {
+    display: none;
+  }
 }
 </style>
 
