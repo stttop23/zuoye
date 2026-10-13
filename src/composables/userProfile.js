@@ -3,6 +3,9 @@ import { computed, ref, watch } from 'vue'
 const storageKey = 'student-work-user-name'
 const roleStorageKey = 'student-work-user-role'
 
+/** 没在本地改过时的默认身份 */
+const DEFAULT_NAME = '刘皖'
+
 function readUserRole() {
   try {
     return localStorage.getItem(roleStorageKey) === 'admin' ? 'admin' : 'student'
@@ -13,9 +16,9 @@ function readUserRole() {
 
 function readUserName() {
   try {
-    return localStorage.getItem(storageKey)?.trim() || '刘皖'
+    return localStorage.getItem(storageKey)?.trim() || DEFAULT_NAME
   } catch {
-    return '刘皖'
+    return DEFAULT_NAME
   }
 }
 
@@ -40,6 +43,15 @@ watch(userRole, (role) => {
   }
 })
 
+/**
+ * 「退出账户」用：把本地身份恢复成默认。
+ * 本地演示没有账号系统（没后端、没登录），所以“退出”就是忘掉本地改过的名字和身份。
+ */
+function resetProfile() {
+  userName.value = DEFAULT_NAME
+  userRole.value = 'student'
+}
+
 export function useUserProfile() {
-  return { userName, userInitial, userRole, isAdmin }
+  return { userName, userInitial, userRole, isAdmin, resetProfile }
 }

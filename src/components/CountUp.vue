@@ -15,6 +15,9 @@
  *    比匀速滚动自然得多。
  */
 import { onBeforeUnmount, ref, watch } from 'vue'
+import { useUiSettings } from '@/composables/uiSettings'
+
+const { motionOn } = useUiSettings()
 
 const props = defineProps({
   value: { type: Number, required: true },
@@ -27,9 +30,10 @@ let frame = null
 let from = 0
 let startedAt = 0
 
-/** 系统开了「减少动态效果」就别滚了，直接给最终值 */
+/** 系统开了「减少动态效果」或用户在「设置」里关了动效，就直接给最终值 */
 function prefersReducedMotion() {
-  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true) return true
+  return !motionOn.value
 }
 
 function run(to) {

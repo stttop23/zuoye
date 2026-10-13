@@ -451,6 +451,23 @@ a {
  * 有人会因为前庭功能障碍被动画弄晕，这是真实存在的需求，
  * 而且写起来就这几行。答辩讲这一条会加分。
  */
+/*
+ * 「我的 → 设置」里关掉界面动效时，会给 <html> 加这个 class。
+ * 声明和上面 prefers-reduced-motion 那段完全一致 —— 为什么、注意什么，看那边的注释。
+ * （）留着两份而不是合并，是因为一个靠系统设置、一个靠用户手动，
+ *   合并只能写成 :is() 那种不好读的写法。）
+ */
+.st-no-motion *,
+.st-no-motion *::before,
+.st-no-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

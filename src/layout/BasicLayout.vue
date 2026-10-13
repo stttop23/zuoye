@@ -35,6 +35,26 @@
           <template #title>{{ item.title }}</template>
         </el-menu-item>
       </el-menu>
+
+      <!-- ==================== 侧边栏底部：账号入口 ==================== -->
+      <div class="layout__footer">
+        <el-dropdown trigger="click" placement="top-start" @command="onAccountCommand">
+          <button type="button" class="layout__account">
+            <el-avatar :size="28" class="layout__avatar">{{ userInitial }}</el-avatar>
+            <span v-show="!sidebarCollapsed" class="layout__account-name">{{ userName }}</span>
+            <el-icon v-show="!sidebarCollapsed" class="layout__account-caret" :size="14">
+              <ArrowDown />
+            </el-icon>
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="profile">我的</el-dropdown-item>
+              <el-dropdown-item command="settings">设置</el-dropdown-item>
+              <el-dropdown-item command="logout" divided>退出账户</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
     </el-aside>
 
     <el-container>
@@ -67,7 +87,11 @@
           >
             <template #reference>
               <span class="layout__bell-btn">
-                <el-badge :value="unreadCount" :hidden="unreadCount === 0" :offset="[-2, 6]">
+                <el-badge
+                  :value="unreadCount"
+                  :hidden="unreadCount === 0 || !bellBadgeOn"
+                  :offset="[-2, 6]"
+                >
                   <el-icon :size="18"><Bell /></el-icon>
                 </el-badge>
               </span>
@@ -128,7 +152,7 @@
     <!-- AI 助手：右下角悬浮窗，全站常驻，不属于任何一个页面 -->
     <AiAssistant />
 
-    <el-dialog v-model="profileDialogVisible" title="修改显示名称" width="420px">
+    <el-dialog v-model="profileDialogVisible" title="我的" width="420px">
       <el-form ref="profileFormRef" :model="profileForm" :rules="profileRules" @submit.prevent>
         <el-form-item label="显示名称" prop="name">
           <el-input
@@ -140,11 +164,29 @@
             @keyup.enter="saveProfile"
           />
         </el-form-item>
+
+        <el-form-item label="身份">
+          <el-tag :type="isAdmin ? 'warning' : 'info'" effect="plain">
+            {{ isAdmin ? '管理员' : '学生' }}
+          </el-tag>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="profileDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="saveProfile">保存</el-button>
       </template>
+    </el-dialog>
+
+    <!-- 设置：只放真会生效的开关，不摆假选项 -->
+    <el-dialog v-model="settingsDialogVisible" title="设置" width="420px">
+      <div class="setting-row">
+        <span class="setting-row__label">界面动效</span>
+        <el-switch v-model="motionOn" />
+      </div>
+      <div class="setting-row">
+        <span class="setting-row__label">未读红点</span>
+        <el-switch v-model="bellBadgeOn" />
+      </div>
     </el-dialog>
   </el-container>
 </template>
@@ -152,8 +194,9 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
+  ArrowDown,
   Bell,
   ChatDotRound,
   Document,
@@ -166,6 +209,7 @@ import {
   School,
 } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
+import { useUiSettings } from '@/composables/uiSettings'
 import { useIsMobile } from '@/composables/useMediaQuery'
 import {
   isNotificationRead,
@@ -178,7 +222,11 @@ import AiAssistant from '@/components/AiAssistant.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { userName, userInitial, userRole } = useUserProfile()
+const { userName, userInitial, userRole, isAdmin, resetProfile } = useUserProfile()
+const { motionOn, bellBadgeOn } = useUiSettings()
+
+/** 设置弹窗开关（侧边栏底部「设置」打开的） */
+const settingsDialogVisible = ref(false)
 
 /** 点通知：标记已读，并跳到对应页面 */
 function openNotification(item) {
@@ -292,6 +340,34 @@ async function saveProfile() {
   profileDialogVisible.value = false
   ElMessage.success('显示名称已更新')
 }
+
+/** 侧边栏底部那个入口点了哪一项（值写在模板的 command 上） */
+function onAccountCommand(command) {
+  if (command === 'profile') openProfileDialog()
+  else if (command === 'settings') settingsDialogVisible.value = true
+  else if (command === 'logout') logout()
+}
+
+/**
+ * 退出账户。
+ * 本地演示没有账号系统（没后端、没登录），“退出”就是把本地改过的身份恢复默认，
+ * 然后退回工作台 —— 不然会停在一个“已退出”却还看着自己名字的奇怪状态。
+ */
+async function logout() {
+  try {
+    await ElMessageBox.confirm('本地保存的身份会恢复默认。', '退出账户', {
+      confirmButtonText: '退出',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return // 点了取消
+  }
+
+  resetProfile()
+  router.push('/dashboard')
+  ElMessage.success('已退出')
+}
 </script>
 
 <style scoped>
@@ -310,6 +386,8 @@ async function saveProfile() {
 
 /* ---------- 侧边栏 ---------- */
 .layout__aside {
+  display: flex;
+  flex-direction: column;
   background: var(--st-gradient-sidebar);
   border-right: 1px solid var(--st-border-color-hair);
   transition: width var(--st-duration-base) var(--st-ease);
@@ -353,6 +431,10 @@ async function saveProfile() {
 
 /* ==================== 菜单 ==================== */
 .layout__menu {
+  /* 菜单占满剩下的高度，把底部的账号入口顶到最下面 */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 8px 0;
   border-right: none;
   background: transparent;
@@ -420,6 +502,68 @@ async function saveProfile() {
 /* 折叠时内容居中由 EP 自己管，这里只把悬停位移取消，免得看着在抖 */
 .layout__aside.is-collapsed .layout__menu :deep(.el-menu-item:hover) {
   transform: none;
+}
+
+/* ---------- 侧边栏底部：账号入口 ---------- */
+.layout__footer {
+  padding: 8px 10px 12px;
+  border-top: 1px solid var(--st-border-color-hair);
+}
+
+.layout__account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--st-radius-sm);
+  background: transparent;
+  color: var(--st-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--st-duration-base) var(--st-ease);
+}
+
+.layout__account:hover {
+  background: var(--st-primary-lighter);
+}
+
+.layout__account-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.layout__account-caret {
+  color: var(--st-text-placeholder);
+}
+
+/* 折叠成窄条时只留头像，居中放 */
+.layout__aside.is-collapsed .layout__account {
+  justify-content: center;
+  padding: 8px 0;
+}
+
+/* 设置弹窗里的一行：左边名字、右边开关 */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.setting-row + .setting-row {
+  border-top: 1px solid var(--st-border-color-hair);
+}
+
+.setting-row__label {
+  color: var(--st-text-primary);
+  font-size: 14px;
 }
 
 /* ---------- 顶栏 ---------- */
