@@ -37,7 +37,12 @@
 
         <div class="layout__header-right">
           <!-- 通知中心：小铃铛 + 未读红点 -->
-          <el-popover placement="bottom-end" :width="300" trigger="click" popper-class="notify-popper">
+          <el-popover
+            placement="bottom-end"
+            :width="300"
+            trigger="click"
+            popper-class="notify-popper"
+          >
             <template #reference>
               <span class="layout__bell-btn">
                 <el-badge :value="unreadCount" :hidden="unreadCount === 0" :offset="[-2, 6]">
@@ -57,7 +62,10 @@
                 <li
                   v-for="item in notifications"
                   :key="item.id"
-                  :class="['notify__item', { 'notify__item--unread': !isNotificationRead(item.id) }]"
+                  :class="[
+                    'notify__item',
+                    { 'notify__item--unread': !isNotificationRead(item.id) },
+                  ]"
                   @click="openNotification(item)"
                 >
                   <div class="notify__title">{{ item.title }}</div>
@@ -120,7 +128,17 @@
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Bell, ChatDotRound, Document, Edit, Expand, Fold, HomeFilled, List, School } from '@element-plus/icons-vue'
+import {
+  Bell,
+  ChatDotRound,
+  Document,
+  Edit,
+  Expand,
+  Fold,
+  HomeFilled,
+  List,
+  School,
+} from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
 import {
   isNotificationRead,

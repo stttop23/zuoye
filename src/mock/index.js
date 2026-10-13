@@ -141,19 +141,98 @@ export const NOTICES = [
 
 /** ---------- 待办事项（与 zhangjing/views/todo/index.vue 对齐） ---------- */
 export const TODOS = [
-  { id: 1, title: '整理期末学生工作总结', category: '文档', priority: '高', assignee: '刘皖', dueDate: '2026-10-15', status: '待办' },
-  { id: 2, title: '核对校园文化活动报名名单', category: '活动', priority: '高', assignee: '张晶', dueDate: '2026-10-10', status: '进行中' },
-  { id: 3, title: '更新国庆假期值班安排', category: '工作', priority: '中', assignee: '罗欣雨', dueDate: '2026-10-08', status: '待办' },
-  { id: 4, title: '汇总志愿服务时长', category: '文档', priority: '低', assignee: '张晶', dueDate: '2026-10-05', status: '已完成' },
-  { id: 5, title: '准备学生会周例会材料', category: '工作', priority: '中', assignee: '刘皖', dueDate: '2026-10-09', status: '进行中' },
-  { id: 6, title: '完成新学期活动复盘', category: '活动', priority: '低', assignee: '罗欣雨', dueDate: '2026-10-20', status: '待办' },
+  {
+    id: 1,
+    title: '整理期末学生工作总结',
+    category: '文档',
+    priority: '高',
+    assignee: '刘皖',
+    dueDate: '2026-10-15',
+    status: '待办',
+  },
+  {
+    id: 2,
+    title: '核对校园文化活动报名名单',
+    category: '活动',
+    priority: '高',
+    assignee: '张晶',
+    dueDate: '2026-10-10',
+    status: '进行中',
+  },
+  {
+    id: 3,
+    title: '更新国庆假期值班安排',
+    category: '工作',
+    priority: '中',
+    assignee: '罗欣雨',
+    dueDate: '2026-10-08',
+    status: '待办',
+  },
+  {
+    id: 4,
+    title: '汇总志愿服务时长',
+    category: '文档',
+    priority: '低',
+    assignee: '张晶',
+    dueDate: '2026-10-05',
+    status: '已完成',
+  },
+  {
+    id: 5,
+    title: '准备学生会周例会材料',
+    category: '工作',
+    priority: '中',
+    assignee: '刘皖',
+    dueDate: '2026-10-09',
+    status: '进行中',
+  },
+  {
+    id: 6,
+    title: '完成新学期活动复盘',
+    category: '活动',
+    priority: '低',
+    assignee: '罗欣雨',
+    dueDate: '2026-10-20',
+    status: '待办',
+  },
 ]
 
 /** ---------- 请假记录（与 luoxinyu/views/leave/index.vue 对齐） ---------- */
 export const LEAVE_RECORDS = [
-  { id: 3, name: '刘皖', type: '事假', startDate: '2026-09-28', endDate: '2026-09-28', days: 1, status: '待审批' },
-  { id: 2, name: '张晶', type: '病假', startDate: '2026-09-15', endDate: '2026-09-16', days: 2, status: '已通过' },
-  { id: 1, name: '罗欣雨', type: '年假', startDate: '2026-09-05', endDate: '2026-09-05', days: 1, status: '已驳回' },
+  {
+    id: 3,
+    name: '刘皖',
+    type: '事假',
+    startDate: '2026-09-28',
+    endDate: '2026-09-28',
+    days: 1,
+    reason: '家中有事，需要回家处理',
+    status: '待审批',
+    applyTime: '2026-09-26 20:12',
+  },
+  {
+    id: 2,
+    name: '张晶',
+    type: '病假',
+    startDate: '2026-09-15',
+    endDate: '2026-09-16',
+    days: 2,
+    reason: '感冒发烧，校医院建议休息两天',
+    status: '已通过',
+    applyTime: '2026-09-14 08:30',
+  },
+  {
+    id: 1,
+    name: '罗欣雨',
+    type: '年假',
+    startDate: '2026-09-05',
+    endDate: '2026-09-05',
+    days: 1,
+    reason: '参加校外竞赛，需要请假一天',
+    status: '已驳回',
+    rejectionReason: '请补充指导老师同意证明后重新提交。',
+    applyTime: '2026-09-03 19:05',
+  },
 ]
 
 /**
@@ -171,7 +250,5 @@ export function dashboardSummary() {
 
 /** 首页「最新公告」：置顶优先，然后按 id 从大到小（和公告页排法一致） */
 export function latestNotices(limit = 3) {
-  return [...NOTICES]
-    .sort((a, b) => Number(b.top) - Number(a.top) || b.id - a.id)
-    .slice(0, limit)
+  return [...NOTICES].sort((a, b) => Number(b.top) - Number(a.top) || b.id - a.id).slice(0, limit)
 }

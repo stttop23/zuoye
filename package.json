@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "prettier --write \"src/**/*.{js,vue,css,json}\""
+    "format": "prettier --write \"{src,liuwan,luoxinyu,zhangjing}/**/*.{js,vue,css,json}\"",
+    "format:check": "prettier --check \"{src,liuwan,luoxinyu,zhangjing}/**/*.{js,vue,css,json}\""
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",

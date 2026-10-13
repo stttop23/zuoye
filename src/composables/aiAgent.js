@@ -97,7 +97,11 @@ export function resetAgent() {
 }
 
 function pushReply(content, source) {
-  agentMessages.value.push({ role: 'assistant', content: content || '我这边没生成出内容，再试一次？', source })
+  agentMessages.value.push({
+    role: 'assistant',
+    content: content || '我这边没生成出内容，再试一次？',
+    source,
+  })
 }
 
 /**
@@ -256,7 +260,10 @@ function localFallback(text, page) {
   }
 
   if (/待办|任务/.test(text)) {
-    const title = text.replace(/^(帮我|我要|我想|新建|添加|加个|建个)+/, '').trim().slice(0, 40)
+    const title = text
+      .replace(/^(帮我|我要|我想|新建|添加|加个|建个)+/, '')
+      .trim()
+      .slice(0, 40)
     return {
       reply: '【本地兜底】已把标题预填进新建弹窗，确认后保存。',
       actions: [{ type: 'fill', target: 'todo', fields: { title } }],
