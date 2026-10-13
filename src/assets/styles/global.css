@@ -387,6 +387,14 @@ a {
     font-size: 18px;
   }
 
+  /*
+   * 手机上说明文字纯占地方（一屏就那么高），标题已经说清楚了。
+   * ⚠️ 同样要三层选择器才压得住各页面 scoped 里的 .page-desc。
+   */
+  .layout .layout__main .page-desc {
+    display: none;
+  }
+
   /* 弹窗别顶到屏幕边，也别离顶部太远 */
   .el-dialog {
     width: 92% !important;

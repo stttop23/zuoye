@@ -159,6 +159,7 @@ import {
   School,
 } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
+import { useIsMobile } from '@/composables/useMediaQuery'
 import {
   isNotificationRead,
   markAllNotificationsRead,
@@ -186,18 +187,16 @@ const isCollapse = ref(false)
  * ------------------------------------------------------------
  * 屏幕窄的时候，侧边栏不再是「折叠成窄条」，而是变成从左边滑出来的抽屉。
  * 因为手机上窄条菜单又占位置又点不准，盖在内容上更实用。
+ *
+ * 判断逻辑在 composables/useMediaQuery.js（公告页也用同一个断点）。
  * ============================================================ */
-const MOBILE_QUERY = '(max-width: 768px)'
-const isMobile = ref(false)
+const isMobile = useIsMobile()
 const mobileMenuOpen = ref(false)
 
-let mediaQuery = null
-
-function syncIsMobile(event) {
-  isMobile.value = event.matches
-  // 回到电脑宽度就把抽屉收起来，不然会留个悬空状态
-  if (!event.matches) mobileMenuOpen.value = false
-}
+// 回到电脑宽度就把抽屉收起来，不然会留个悬空状态
+watch(isMobile, (窄) => {
+  if (!窄) mobileMenuOpen.value = false
+})
 
 /** 手机上永远展开（抽屉里塞个窄条图标没有意义） */
 const sidebarCollapsed = computed(() => !isMobile.value && isCollapse.value)
@@ -233,14 +232,10 @@ function onKeydown(event) {
 }
 
 onMounted(() => {
-  mediaQuery = window.matchMedia(MOBILE_QUERY)
-  syncIsMobile(mediaQuery)
-  mediaQuery.addEventListener('change', syncIsMobile)
   window.addEventListener('keydown', onKeydown)
 })
 
 onBeforeUnmount(() => {
-  mediaQuery?.removeEventListener('change', syncIsMobile)
   window.removeEventListener('keydown', onKeydown)
 })
 
