@@ -7,7 +7,10 @@
 
       <div class="check-in__text">
         <div class="check-in__title">{{ done ? `已打卡 ${lastTime}` : '今日未打卡' }}</div>
-        <div class="check-in__sub">{{ subText }}</div>
+        <div class="check-in__sub">
+          <span>{{ todayText }}</span>
+          <span v-if="placeText">{{ placeText }}</span>
+        </div>
       </div>
 
       <el-tag v-if="streak > 0" type="warning" effect="plain" size="small">
@@ -87,22 +90,25 @@ const todayText = computed(() =>
   }),
 )
 
-/** 副标题：日期 + 位置（打卡后才有） */
-const subText = computed(() => {
+/**
+ * 副标题里那一行地点。
+ * 日期单独一行、地点单独一行 —— 拼成一句「日期 · 地名」时，
+ * 长地名会从中间断开（实测「滁州学院会峰校区学 / 生公寓」），很难看。
+ */
+const placeText = computed(() => {
   const place = state.value.place
-  if (!place) return todayText.value
-  if (place.error) return `${todayText.value} · ${place.error}`
+  if (!place) return ''
+  if (place.error) return place.error
 
-  // 有地名就优先显示地名（「浙江大学玉泉校区」比一串数字好认得多）；
   // 顺序：附近 POI 名 > 拼好的短地址 > 完整地址 > 坐标。
-  // 「短地址」是后端专门拼的（市+区+街道），比完整地址短得多，窄屏上不会换行。
+  // 「短地址」是后端专门拼的（市+区+街道），比完整地址短得多。
   // 拿不到地名就退回坐标 —— 退回去是常态，不算出错。
-  const where =
+  return (
     place.poi ||
     place.short ||
     place.address ||
     `${place.lat}, ${place.lng}（±${place.accuracy} 米）`
-  return `${todayText.value} · ${where}`
+  )
 })
 
 /**
@@ -284,7 +290,10 @@ watch(
   color: var(--st-text-primary);
 }
 
+/* 日期一行、地点一行。地名可能很长，竖着排比挤在一行里从中间断开好读 */
 .check-in__sub {
+  display: flex;
+  flex-direction: column;
   margin-top: 4px;
   font-size: 13px;
   color: var(--st-text-secondary);
