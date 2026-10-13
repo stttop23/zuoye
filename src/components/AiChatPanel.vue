@@ -36,7 +36,7 @@
         type="textarea"
         :rows="2"
         resize="none"
-        :placeholder="listening ? '正在听……说完点「停止」' : '说一句话，比如：下周三到周五请病假'"
+        :placeholder="listening ? '正在听……' : '说一句话，比如：下周三到周五请病假'"
         @keydown.enter.exact.prevent="submit"
       />
       <div class="ai-chat__actions">
@@ -44,14 +44,18 @@
           <el-tooltip :content="voiceTip" placement="top">
             <el-button
               link
+              class="ai-chat__voice"
               :type="listening ? 'danger' : undefined"
               :disabled="!voiceSupported"
-              @click="toggleVoice"
+              @pointerdown="startHold"
+              @keydown.space.prevent="startHold"
+              @keyup.space="stopHold"
+              @contextmenu.prevent
             >
               <el-icon class="ai-chat__mic" :class="{ 'is-listening': listening }">
                 <Microphone />
               </el-icon>
-              {{ listening ? '停止' : '语音' }}
+              {{ listening ? '松开停止' : '按住说话' }}
             </el-button>
           </el-tooltip>
           <el-button link @click="resetAgent">清空</el-button>
@@ -76,7 +80,7 @@
  * 「听懂」由后端负责，「填表」由页面负责，这里不掺和。
  * 填完表要把用户带去哪个页面，也由 aiAgent.js 的 runActions 决定。
  */
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Microphone } from '@element-plus/icons-vue'
@@ -109,7 +113,7 @@ const suggestions = [
 const {
   supported: voiceSupported,
   listening,
-  toggle: toggleVoiceRaw,
+  start: startVoice,
   stop: stopVoice,
 } = useSpeechInput({
   onText: (text) => {
@@ -120,13 +124,38 @@ const {
 
 const voiceTip = computed(() => {
   if (!voiceSupported.value) return '当前浏览器不支持语音输入，换 Chrome 或 Edge'
-  return listening.value ? '点一下停止' : '点一下开始说话'
+  return listening.value ? '松开就停' : '按住说话（需要联网）'
 })
 
-function toggleVoice() {
-  // 把输入框里已有的内容传进去，识别结果会接在它后面，不会覆盖
-  toggleVoiceRaw(draft.value)
+/*
+ * ---------- 语音：按住说话，松手结束 ----------
+ * 为什么不用点击：点击是「按一下切开关」，说话根本来不及 —— 真实场景里
+ * 你得一直按着（跟微信语音一个手感）。所以按下开始、松手结束。
+ */
+let holding = false
+
+function startHold(event) {
+  if (!voiceSupported.value || listening.value) return
+  // 只认左键 / 触屏 / 手写笔；右键、中键不参与
+  if (event?.type === 'pointerdown' && event.button > 0) return
+  holding = true
+  // 把输入框里已有的内容传进去，识别结果接在后面，不会覆盖
+  startVoice(draft.value)
+  // ⚠️ 松手可能发生在按钮外面（手指滑出去、鼠标移开），所以监听挂在 window 上
+  window.addEventListener('pointerup', stopHold)
+  window.addEventListener('pointercancel', stopHold)
 }
+
+function stopHold() {
+  window.removeEventListener('pointerup', stopHold)
+  window.removeEventListener('pointercancel', stopHold)
+  if (!holding) return
+  holding = false
+  stopVoice() // 已经识别出来的文字会留在输入框里
+}
+
+// 按住不放就离开页面也要摘干净，不然监听会一直挂在那里
+onBeforeUnmount(stopHold)
 
 /* ---------- 滚动到底 ---------- */
 onMounted(scrollToBottom) // 从抽屉切到页面时，先看到最新一条
@@ -245,6 +274,17 @@ function useSuggestion(content) {
   display: flex;
   align-items: center;
   gap: var(--st-gap-sm);
+}
+
+/*
+ * 语音按钮是「按住说话」，不是点击开关。
+ * 手机上长按按钮会跳出系统的选择 / 复制菜单，按住的过程就断了，所以都挡掉。
+ */
+.ai-chat__voice {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* 正在听的时候让麦克风「呼吸」一下，答辩演示时一眼能看出来 */

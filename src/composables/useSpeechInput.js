@@ -28,7 +28,14 @@ const ERROR_MESSAGES = {
  */
 export function useSpeechInput({ lang = 'zh-CN', onText, onError } = {}) {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
-  const supported = Boolean(Recognition)
+  /*
+   * ⚠️ 这里必须是 ref，不能写成普通布尔值。
+   * 之前写成 `const supported = Boolean(Recognition)`，结果调用方在脚本里
+   * 写 `voiceSupported.value` 会取到 `undefined`（布尔值没有 .value），
+   * `!undefined` 恒为 true → 每次调用都静默提前返回，功能“点了没反应”。
+   * 返回值里三个都是 ref，调用方脚本里统一 `.value`、模板里不用写。
+   */
+  const supported = ref(Boolean(Recognition))
 
   const listening = ref(false)
 
@@ -38,7 +45,7 @@ export function useSpeechInput({ lang = 'zh-CN', onText, onError } = {}) {
   let fatal = false // 遇到致命错误就不再自动续听，免得死循环
 
   function ensure() {
-    if (recognition || !supported) return recognition
+    if (recognition || !supported.value) return recognition
 
     recognition = new Recognition()
     recognition.lang = lang
@@ -81,7 +88,7 @@ export function useSpeechInput({ lang = 'zh-CN', onText, onError } = {}) {
   }
 
   function start(existing = '') {
-    if (!supported || listening.value) return
+    if (!supported.value || listening.value) return
     const instance = ensure()
     const prefix = existing.trim()
     base = prefix ? `${prefix}，` : ''
