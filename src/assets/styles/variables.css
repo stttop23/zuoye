@@ -71,6 +71,8 @@
   --st-duration-fast: 0.15s;
   --st-duration-base: 0.25s;
   --st-duration-slow: 0.45s;
+  /* 抽屉滑出：比 base 稍慢一点，位移过程才看得清（太快就“闪”一下过去了） */
+  --st-duration-drawer: 0.3s;
   --st-ease: cubic-bezier(0.4, 0, 0.2, 1); /* 标准缓动，加速又减速 */
   --st-ease-back: cubic-bezier(0.34, 1.56, 0.64, 1); /* 收尾带一点回弹 */
 

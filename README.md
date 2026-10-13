@@ -185,6 +185,7 @@ color: #303133;
 | --- | --- |
 | 颜色 / 圆角 / 阴影 / 间距 | `variables.css` 里的 `--st-*` 变量（新增了渐变、光晕、四层阴影、动效时长） |
 | 区块淡入上移 | 加 class `st-fade-up` |
+| 整块淡入（不带位移） | 加 class `st-fade-in` |
 | 一排卡片挨个出现 | 再加 `st-delay-1` ~ `st-delay-6`（错峰，别一次全冒出来） |
 | 图标 / 徽标「弹」出来 | `st-pop` |
 | 数字从 0 滚上来 | `<CountUp :value="6" />`（`src/components/CountUp.vue`） |

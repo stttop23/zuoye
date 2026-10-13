@@ -1,11 +1,18 @@
 <template>
   <el-container class="layout">
     <!-- 手机上侧边栏是盖在内容上的抽屉，后面垫一层遮罩，点一下就关 -->
-    <div
-      v-if="isMobile && mobileMenuOpen"
-      class="layout__mask"
-      @click="mobileMenuOpen = false"
-    />
+    <!--
+      包 <transition> 是为了**关的时候也能淡出**。
+      之前只给遮罩写了入场 animation，v-if 一移除它就是「喷」一下消失：
+      抽屉还在往回滑，背景已经亮回来了 —— 看着就像闪了一下。
+    -->
+    <transition name="mask">
+      <div
+        v-if="isMobile && mobileMenuOpen"
+        class="layout__mask"
+        @click="mobileMenuOpen = false"
+      />
+    </transition>
 
     <!-- ==================== 左侧菜单 ==================== -->
     <el-aside :width="sidebarWidth" :class="asideClass">
@@ -532,7 +539,17 @@ async function saveProfile() {
   z-index: 2000;
   background: rgba(16, 42, 82, 0.42);
   backdrop-filter: blur(2px);
-  animation: st-fade-in var(--st-duration-base) var(--st-ease) both;
+}
+
+/* 进出都淡，且和抽屉同时结束 —— 两边节奏一样才不会看着“闪” */
+.mask-enter-active,
+.mask-leave-active {
+  transition: opacity var(--st-duration-drawer) var(--st-ease);
+}
+
+.mask-enter-from,
+.mask-leave-to {
+  opacity: 0;
 }
 
 @media (max-width: 768px) {
@@ -545,7 +562,7 @@ async function saveProfile() {
     z-index: 2100;
     width: 220px !important;
     transform: translateX(-100%);
-    transition: transform var(--st-duration-base) var(--st-ease);
+    transition: transform var(--st-duration-drawer) var(--st-ease);
     box-shadow: var(--st-shadow-float);
   }
 
