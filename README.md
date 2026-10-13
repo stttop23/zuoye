@@ -127,7 +127,8 @@ npm run preview   # 起服务跑 dist/，默认 http://localhost:4173/
 > 演示建议：常规用 `npm run dev`（临时要改代码不用重新构建）；
 > 想更接近「真上线」的观感或看性能，就用 `npm run preview`。
 >
-> ⛔ **本项目不做线上部署** —— 原因和替代方案见 `docs/部署到服务器.md` 开头。
+> ⛔ **本项目不做线上部署** —— 模型跑在本机，挂上去 AI 会降级成本地正则规则；
+> 打卡定位还必须有 https，用 http 的 IP 直访浏览器直接拒绝给位置。演示效果反而更差。
 
 其他命令：
 
@@ -286,7 +287,6 @@ zuoye/
 │   ├── screenshots/            页面截图（README 第八节在用）
 │   ├── 项目框架.md             架构与分工说明
 │   ├── AI智能体接入指南.md     AI 助手：架构、契约、扩展、踩坑
-│   ├── 部署到服务器.md         ⛔ 暂不用（部署留档，写了线上会降级成什么样）
 │   └── AI填表方案.md           动手前的方案稿（存档）
 ├── .prettierrc.json            格式化规则
 ├── index.html
@@ -365,7 +365,7 @@ zuoye/
 - [x] 公告页手机版只显示标题（断点判断抽成 `src/composables/useMediaQuery.js`）
 - ⛔ **不部署到线上服务器**（2026-10-13 决定）：模型跑在本机，挂上去 AI 会降级成本地规则、
   打卡定位还必须有 https，演示效果反而比本机差。**演示就用本机 `npm run dev`。**
-  部署步骤留着存档：`docs/部署到服务器.md` + `deploy/nginx-zuoye.conf`
+  唯一留下的部署存档是 `deploy/nginx-zuoye.conf`（含 SPA 路由坑 + HTTPS 写法）
 - [ ] 后端接口对接
 - [ ] 把假数据换成数据库（`src/mock/` 和 `server/mock_data.py` 一起换）
 - [ ] 队友页面里内联的假数据改读 `src/mock/`（待办页 / 请假页，得她们自己改）
