@@ -1,11 +1,11 @@
 # 学生工作管理系统
 
-> 大学生小组作业 · Vue 3 + Vite + Element Plus 前端项目
+> 大学生小组作业 · Vue 3 + Vite + Flask + SQLite
 
 ## 一、项目简介
 
 面向学生会的日常事务管理前端系统，包含工作台总览、公告通知浏览、请假申请、待办事项四大模块。
-本项目为**纯前端实现**，数据当前使用本地假数据（mock），接口层预留完毕，后端就绪后可直接替换。
+业务数据由 Flask API 提供并保存在本地 SQLite 数据库中；首次启动会自动建表并写入演示数据，也会把已有浏览器缓存迁入数据库。
 
 ### 🤖 AI 助手（2026-10-12 新增）
 
@@ -77,6 +77,7 @@
 | Vue Router | 5.x | 前端路由，history 模式 |
 | Element Plus | 2.x | UI 组件库（全量引入 + 中文语言包） |
 | Prettier | 3.x | 代码格式化，全组统一风格 |
+| Flask + SQLite | Flask 3.x / Python 标准库 | 本地业务 API 与持久化数据库 |
 
 ## 四、页面结构
 
@@ -92,7 +93,7 @@
 
 ## 五、如何运行项目
 
-前置条件：已安装 Node.js（建议 20 及以上）。
+前置条件：已安装 Node.js（建议 20 及以上）和 Python 3.8+。
 
 ```bash
 # 1. 克隆仓库
@@ -104,11 +105,19 @@ cd zuoye
 # 3. 安装依赖（第一次运行必须执行，约 1-3 分钟）
 npm install
 
-# 4. 启动开发服务器
+# 4. 安装后端依赖
+python -m pip install -r server\requirements.txt
+
+# 5. 终端一：启动 Flask API（首次启动自动创建 server\student_work.db）
+python server\app.py
+
+# 6. 终端二：启动前端
 npm run dev
 ```
 
-浏览器打开终端中显示的地址（默认 <http://localhost:5173>）即可看到页面。
+浏览器打开终端中显示的地址（默认 <http://localhost:5173>）即可看到页面。开发服务器会把 `/api` 请求代理到 Flask 的 `http://127.0.0.1:5000`。SQLite 文件只保存在本机，不会提交到 Git。
+
+当前演示版没有用户登录认证；局域网内能访问前端的设备也能读写数据库，请勿暴露到公网或不可信网络。
 
 ### 想给别人看（不部署也够用）
 
@@ -266,7 +275,7 @@ zuoye/
 │       └── NotFoundView.vue    404 页面
 ├── luoxinyu/                   ★ 罗欣雨负责的页面
 │   └── views/leave/
-│       ├── index.vue             请假申请：组装子组件 + 假数据
+│       ├── index.vue             请假申请：组装子组件 + appStore
 │       └── components/           LeaveForm（表单+校验）/ LeaveRecords（记录表）
 ├── zhangjing/                  ★ 张晶负责的页面
 │   └── views/todo/
@@ -300,8 +309,9 @@ zuoye/
 │   │   └── index.js            路由表（刘皖统一维护）
 │   ├── App.vue
 │   └── main.js                 入口：Element Plus、路由、全局样式
-├── server/                     AI 代理服务（Flask，调本机模型）
-│   ├── app.py                  工具定义 + 智能体循环 + 日期校正 + 本地规则兜底
+├── server/                     Flask API、AI 代理服务与 SQLite 数据库
+│   ├── app.py                  业务数据 API + AI 助手代理
+│   ├── student_work.db         自动生成的本机数据库（不提交）
 │   ├── asr.py                  本机语音转文字（Whisper，试验用，见 docs 6.4）
 │   ├── mock_data.py            兜底种子（拿不到前端快照时才用；接数据库后删）
 │   ├── requirements.txt

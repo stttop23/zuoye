@@ -10,17 +10,13 @@
  *      数字对不上比缺功能更丢人。
  *      → 现在 todos / notices / leaveRecords 只在这里一份，页面 import 着用。
  *
- *   2) 数据只活在内存里
- *      刷新一下，刚建的待办、刚提交的请假就全没了，按个 F5 就穿帮。
- *      → 现在每次变动自动写 localStorage，刷新还在。
- *
- * ⚠️ 接后端时怎么改：
- *      把下面读写 localStorage 的部分换成接口请求（拉列表 / 提交），页面一行都不用动。
- *      `server/mock_data.py` 也可以直接删掉 —— AI 的只读工具改成读 agentSnapshot()
- *      上报的实时快照（见本文件末尾），后端就不用再手抄一份了。
+ *   2) 业务数据只保存在浏览器
+ *      SQLite 后端现为权威数据源，本地存档只用于后端暂时不可用时展示缓存。
  */
-import { ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { ref, watch, nextTick } from 'vue'
 import { LEAVE_RECORDS, MEMBERS, NOTICES, TODOS } from '@/mock'
+import { getWorkspaceSnapshot, saveWorkspaceSnapshot } from '@/api/workspace'
 
 const DATA_KEY = 'student-work-data'
 const CHECKIN_KEY = 'student-work-checkin'
@@ -55,6 +51,7 @@ export const notices = ref(pick(saved, 'notices', NOTICES))
 
 /** ---------- 请假记录 ---------- */
 export const leaveRecords = ref(pick(saved, 'leaveRecords', LEAVE_RECORDS))
+export const databaseConnected = ref(false)
 
 /** ---------- 打卡 ---------- */
 function readCheckin() {
@@ -74,6 +71,10 @@ export const checkin = ref(readCheckin())
  * deep 是必须的 —— 页面里大多是 `todo.status = '已完成'` 这种改字段的写法，
  * 不 deep 的话监听不到。
  * ------------------------------------------------------------------ */
+let skipNextStoreSync = false
+let syncTimer
+let saveQueue = Promise.resolve()
+
 watch(
   [todos, notices, leaveRecords],
   () => {
@@ -89,9 +90,59 @@ watch(
     } catch {
       // 浏览器禁用本地存储也不影响这一次使用
     }
+
+    if (!databaseConnected.value || skipNextStoreSync) return
+    clearTimeout(syncTimer)
+    syncTimer = setTimeout(() => {
+      const snapshot = {
+        todos: clone(todos.value),
+        notices: clone(notices.value),
+        leaveRecords: clone(leaveRecords.value),
+      }
+      saveQueue = saveQueue
+        .then(() => saveWorkspaceSnapshot(snapshot))
+        .catch((error) => {
+          databaseConnected.value = false
+          console.error('SQLite 同步失败', error)
+          ElMessage.error(`数据库同步失败：${error.message}。刷新页面可重新连接。`)
+        })
+    }, 300)
   },
   { deep: true },
 )
+
+export async function initializeWorkspace() {
+  const { data, initialized } = await getWorkspaceSnapshot()
+  if (
+    !data ||
+    !Array.isArray(data.todos) ||
+    !Array.isArray(data.notices) ||
+    !Array.isArray(data.leaveRecords)
+  ) {
+    throw new Error('数据库返回的数据格式无效')
+  }
+
+  const hasLocalSnapshot = ['todos', 'notices', 'leaveRecords'].every((key) =>
+    Array.isArray(saved[key]),
+  )
+  const initialData =
+    !initialized && hasLocalSnapshot
+      ? {
+          todos: saved.todos,
+          notices: saved.notices,
+          leaveRecords: saved.leaveRecords,
+        }
+      : data
+  if (!initialized) await saveWorkspaceSnapshot(initialData)
+
+  skipNextStoreSync = true
+  todos.value = initialData.todos
+  notices.value = initialData.notices
+  leaveRecords.value = initialData.leaveRecords
+  await nextTick()
+  skipNextStoreSync = false
+  databaseConnected.value = true
+}
 
 watch(
   checkin,

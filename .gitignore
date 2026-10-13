@@ -44,3 +44,5 @@ coverage/
 # --- Python（AI 代理产生的缓存）---
 __pycache__/
 *.py[cod]
+server/*.db
+server/*.db-*

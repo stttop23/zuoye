@@ -25,8 +25,9 @@ AI 智能体代理服务（Flask）
 import json
 import os
 import re
+import sqlite3
 import threading
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import requests
 from flask import Flask, jsonify, request
@@ -39,6 +40,9 @@ except ImportError:
     pass
 
 app = Flask(__name__)
+DATABASE_PATH = os.getenv(
+    "STUDENT_WORK_DB", os.path.join(os.path.dirname(__file__), "student_work.db")
+)
 
 try:  # 同目录下的临时假数据，为什么有这个东西见它自己的文件头
     import mock_data
@@ -1430,6 +1434,316 @@ COMMAND_ONLY_RE = re.compile(
 )
 
 
+def connect_database():
+    connection = sqlite3.connect(DATABASE_PATH)
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+def initialize_database():
+    os.makedirs(os.path.dirname(os.path.abspath(DATABASE_PATH)), exist_ok=True)
+    with connect_database() as db:
+        db.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS notices (
+                id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                type TEXT NOT NULL,
+                author TEXT NOT NULL,
+                publish_time TEXT NOT NULL,
+                top INTEGER NOT NULL DEFAULT 0,
+                content TEXT NOT NULL DEFAULT ''
+            );
+            CREATE TABLE IF NOT EXISTS leaves (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL,
+                days INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                status TEXT NOT NULL,
+                rejection_reason TEXT NOT NULL DEFAULT '',
+                apply_time TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS todos (
+                id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                category TEXT NOT NULL,
+                priority TEXT NOT NULL,
+                assignee TEXT NOT NULL,
+                due_date TEXT NOT NULL,
+                status TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS workspace_meta (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                initialized INTEGER NOT NULL DEFAULT 0
+            );
+            """
+        )
+        db.execute("INSERT OR IGNORE INTO workspace_meta (id, initialized) VALUES (1, 0)")
+        if db.execute("SELECT COUNT(*) FROM notices").fetchone()[0] == 0:
+            db.executemany(
+                """INSERT INTO notices
+                   (id, title, type, author, publish_time, top, content)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                [
+                    (
+                        item["id"],
+                        item["title"],
+                        item["type"],
+                        item["author"],
+                        item["publishTime"],
+                        int(item.get("top", False)),
+                        item.get("content", ""),
+                    )
+                    for item in mock_data.NOTICES
+                ],
+            )
+        if db.execute("SELECT COUNT(*) FROM leaves").fetchone()[0] == 0:
+            db.executemany(
+                """INSERT INTO leaves
+                   (id, name, type, start_date, end_date, days, reason, status,
+                    rejection_reason, apply_time)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                [
+                    (
+                        item["id"],
+                        item["name"],
+                        item["type"],
+                        item["startDate"],
+                        item["endDate"],
+                        item["days"],
+                        item["reason"],
+                        item["status"],
+                        item.get("rejectionReason", ""),
+                        item["applyTime"],
+                    )
+                    for item in mock_data.LEAVE_RECORDS
+                ],
+            )
+        if db.execute("SELECT COUNT(*) FROM todos").fetchone()[0] == 0:
+            db.executemany(
+                """INSERT INTO todos
+                   (id, title, description, category, priority, assignee, due_date, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                [
+                    (
+                        item["id"],
+                        item["title"],
+                        item.get("description", ""),
+                        item["category"],
+                        item["priority"],
+                        item["assignee"],
+                        item["dueDate"],
+                        item["status"],
+                    )
+                    for item in mock_data.TODOS
+                ],
+            )
+
+
+def valid_date(value):
+    if not isinstance(value, str):
+        return False
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+
+def valid_workspace(data):
+    if not isinstance(data, dict) or any(
+        not isinstance(data.get(key), list) for key in ("todos", "notices", "leaveRecords")
+    ):
+        return False
+    if any(len(data[key]) > 10000 for key in ("todos", "notices", "leaveRecords")):
+        return False
+
+    def valid_id(item):
+        return isinstance(item.get("id"), int) and not isinstance(item.get("id"), bool) and item["id"] > 0
+
+    notices = data["notices"]
+    if any(
+        not isinstance(item, dict)
+        or not valid_id(item)
+        or not isinstance(item.get("title"), str)
+        or not 1 <= len(item["title"].strip()) <= 100
+        or item.get("type") not in ("通知", "活动", "制度")
+        or not isinstance(item.get("author"), str)
+        or not item["author"].strip()
+        or not isinstance(item.get("publishTime"), str)
+        or not isinstance(item.get("top", False), bool)
+        or not isinstance(item.get("content", ""), str)
+        or len(item.get("content", "")) > 10000
+        for item in notices
+    ):
+        return False
+
+    leaves = data["leaveRecords"]
+    if any(
+        not isinstance(item, dict)
+        or not valid_id(item)
+        or not isinstance(item.get("name"), str)
+        or not item["name"].strip()
+        or item.get("type") not in LEAVE_TYPES
+        or not valid_date(item.get("startDate"))
+        or not valid_date(item.get("endDate"))
+        or item["endDate"] < item["startDate"]
+        or not isinstance(item.get("days"), int)
+        or isinstance(item.get("days"), bool)
+        or item["days"] < 1
+        or not isinstance(item.get("reason"), str)
+        or not 5 <= len(item["reason"]) <= 200
+        or item.get("status") not in ("待审批", "已通过", "已驳回")
+        or not isinstance(item.get("rejectionReason", ""), str)
+        or not isinstance(item.get("applyTime"), str)
+        for item in leaves
+    ):
+        return False
+
+    todos = data["todos"]
+    if any(
+        not isinstance(item, dict)
+        or not valid_id(item)
+        or not isinstance(item.get("title"), str)
+        or not 2 <= len(item["title"].strip()) <= 40
+        or not isinstance(item.get("description", ""), str)
+        or len(item.get("description", "")) > 200
+        or item.get("category") not in TODO_CATEGORIES
+        or item.get("priority") not in TODO_PRIORITIES
+        or not isinstance(item.get("assignee"), str)
+        or not item["assignee"].strip()
+        or not valid_date(item.get("dueDate"))
+        or item.get("status") not in TODO_STATUSES
+        for item in todos
+    ):
+        return False
+
+    return all(
+        len({item["id"] for item in items}) == len(items)
+        for items in (notices, leaves, todos)
+    )
+
+
+def serialize_notice(row):
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "type": row["type"],
+        "author": row["author"],
+        "publishTime": row["publish_time"],
+        "top": bool(row["top"]),
+        "content": row["content"],
+    }
+
+
+def serialize_leave(row):
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "type": row["type"],
+        "startDate": row["start_date"],
+        "endDate": row["end_date"],
+        "days": row["days"],
+        "reason": row["reason"],
+        "status": row["status"],
+        "rejectionReason": row["rejection_reason"],
+        "applyTime": row["apply_time"],
+    }
+
+
+def serialize_todo(row):
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "description": row["description"],
+        "category": row["category"],
+        "priority": row["priority"],
+        "assignee": row["assignee"],
+        "dueDate": row["due_date"],
+        "status": row["status"],
+    }
+
+
+@app.get("/api/workspace")
+def get_workspace():
+    with connect_database() as db:
+        initialized = db.execute(
+            "SELECT initialized FROM workspace_meta WHERE id = 1"
+        ).fetchone()["initialized"]
+        data = {
+            "notices": [
+                serialize_notice(row)
+                for row in db.execute("SELECT * FROM notices ORDER BY top DESC, id DESC")
+            ],
+            "leaveRecords": [
+                serialize_leave(row)
+                for row in db.execute("SELECT * FROM leaves ORDER BY id DESC")
+            ],
+            "todos": [
+                serialize_todo(row)
+                for row in db.execute("SELECT * FROM todos ORDER BY id DESC")
+            ],
+        }
+    return jsonify({"ok": True, "data": data, "initialized": bool(initialized)})
+
+
+@app.put("/api/workspace")
+def save_workspace():
+    body = request.get_json(silent=True)
+    data = body.get("data") if isinstance(body, dict) else None
+    if not valid_workspace(data):
+        return jsonify({"ok": False, "error": "工作区数据无效"}), 400
+
+    with connect_database() as db:
+        db.execute("DELETE FROM notices")
+        db.execute("DELETE FROM leaves")
+        db.execute("DELETE FROM todos")
+        db.executemany(
+            """INSERT INTO notices
+               (id, title, type, author, publish_time, top, content)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            [
+                (
+                    item["id"], item["title"], item["type"], item["author"],
+                    item["publishTime"], int(item.get("top", False)), item.get("content", ""),
+                )
+                for item in data["notices"]
+            ],
+        )
+        db.executemany(
+            """INSERT INTO leaves
+               (id, name, type, start_date, end_date, days, reason, status,
+                rejection_reason, apply_time)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            [
+                (
+                    item["id"], item["name"], item["type"], item["startDate"],
+                    item["endDate"], item["days"], item["reason"], item["status"],
+                    item.get("rejectionReason", ""), item["applyTime"],
+                )
+                for item in data["leaveRecords"]
+            ],
+        )
+        db.executemany(
+            """INSERT INTO todos
+               (id, title, description, category, priority, assignee, due_date, status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            [
+                (
+                    item["id"], item["title"], item.get("description", ""), item["category"],
+                    item["priority"], item["assignee"], item["dueDate"], item["status"],
+                )
+                for item in data["todos"]
+            ],
+        )
+        db.execute("UPDATE workspace_meta SET initialized = 1 WHERE id = 1")
+    return jsonify({"ok": True})
+
+
 def enforce_commands(reply, actions, user_text, page, snapshot=None):
     """
     模型什么动作都没产出、但用户这句是【明确命令】时，用本地规则把动作补上。
@@ -1677,6 +1991,10 @@ def start_asr_warmup():
     if asr_service is None:
         return
     threading.Thread(target=asr_service.warm_up, name="asr-warmup", daemon=True).start()
+
+
+# 初始化 SQLite 数据库，并为全新数据库写入演示种子。
+initialize_database()
 
 
 # 调试模式开关。

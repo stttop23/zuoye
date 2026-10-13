@@ -5,9 +5,11 @@ import ElementPlus from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
+import { ElMessage } from 'element-plus'
 
 import App from './App.vue'
 import router from './router'
+import { initializeWorkspace } from './composables/appStore'
 
 // ⚠️ 全局样式必须放在 Element Plus 之后引入，否则没法覆盖组件库默认样式
 import '@/assets/styles/variables.css'
@@ -22,4 +24,22 @@ for (const [name, component] of Object.entries(ElementPlusIconsVue)) {
 
 app.use(ElementPlus, { locale: zhCn })
 app.use(router)
-app.mount('#app')
+
+async function startApp() {
+  let databaseError
+  try {
+    await initializeWorkspace()
+  } catch (error) {
+    databaseError = error
+    console.error('SQLite 数据库连接失败', error)
+  }
+
+  app.mount('#app')
+  if (databaseError) {
+    ElMessage.error(
+      `数据库连接失败：${databaseError.message}。当前显示本地缓存，数据修改不会保存到数据库。`,
+    )
+  }
+}
+
+startApp()
