@@ -42,21 +42,28 @@
       <div class="ai-chat__actions">
         <div class="ai-chat__actions-left">
           <el-tooltip :content="voiceTip" :disabled="voiceSupported" placement="top">
-            <el-button
-              link
-              class="ai-chat__voice"
-              :type="listening ? 'danger' : undefined"
-              :disabled="!voiceSupported"
-              @pointerdown="startHold"
-              @keydown.space.prevent="startHold"
-              @keyup.space="stopHold"
-              @contextmenu.prevent
-            >
-              <el-icon class="ai-chat__mic" :class="{ 'is-listening': listening }">
-                <Microphone />
-              </el-icon>
-              {{ listening ? '松开停止' : '按住说话' }}
-            </el-button>
+            <!--
+              外面必须套一层 span：
+              【禁用】的按钮不触发鼠标事件，直接写在里面的话 tooltip 永远弹不出来 ——
+              而「浏览器不支持」恰恰是最需要解释一句的时候（比如 iPhone 上的 Safari）。
+            -->
+            <span class="ai-chat__voice-wrap">
+              <el-button
+                link
+                class="ai-chat__voice"
+                :type="listening ? 'danger' : undefined"
+                :disabled="!voiceSupported"
+                @pointerdown="startHold"
+                @keydown.space.prevent="startHold"
+                @keyup.space="stopHold"
+                @contextmenu.prevent
+              >
+                <el-icon class="ai-chat__mic" :class="{ 'is-listening': listening }">
+                  <Microphone />
+                </el-icon>
+                {{ listening ? '松开停止' : '按住说话' }}
+              </el-button>
+            </span>
           </el-tooltip>
           <el-button link @click="resetAgent">清空</el-button>
         </div>
@@ -124,7 +131,8 @@ const {
 
 const voiceTip = computed(() => {
   // 只在不支持的时候提示一句（按钮也置灰了，用户得知道为什么）
-  if (!voiceSupported.value) return '当前浏览器不支持语音输入，换 Chrome 或 Edge'
+  if (!voiceSupported.value)
+    return '这个浏览器没有语音识别（只有 Chrome / Edge 有，Safari 和 Firefox 没有）'
   return ''
 })
 
@@ -286,6 +294,11 @@ function useSuggestion(content) {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+}
+
+/* tooltip 的挂载点（禁用状态下也要能弹）。inline-flex 是为了不改变原有排版 */
+.ai-chat__voice-wrap {
+  display: inline-flex;
 }
 
 /* 正在听的时候让麦克风「呼吸」一下，答辩演示时一眼能看出来 */

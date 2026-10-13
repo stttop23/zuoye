@@ -266,13 +266,18 @@ Content-Type: application/json
 > （`touch-action: none` + `user-select: none` + `@contextmenu.prevent`），否则长按会被系统打断。
 > 键盘也能用：**按住空格**开始、松开停止。
 
-**⚠️ 三条必须知道的限制（答辩时别讲错）：**
+**⚠️ 四条必须知道的限制（答辩时别讲错）：**
 
 | 限制 | 说明 |
 | --- | --- |
-| **只有 Chrome / Edge 有** | Firefox 至今没实现这个 API。不支持时按钮自动置灰，鼠标悬停有提示 |
+| **只有 Chrome / Edge 有** | MDN 兼容性表：Chrome ✅ Edge ✅ Firefox ❌ **Safari ❌**。<br>→ **iPhone / iPad 上任何浏览器都用不了**（iOS 上全是 Safari 内核），这不是配置问题，开 HTTPS 也救不了。不支持时按钮自动置灰，悬停有提示 |
 | **必须联网** | 它**不是本机识别**——音频会发到浏览器厂商的服务器（Edge→微软，Chrome→Google）。所以它和「模型跑在本机、数据不出机器」是**两回事** |
-| 没权限会失败 | 会弹提示「点地址栏左边的锁图标，把麦克风改成允许」 |
+| **必须安全环境** | `localhost` 和 `https` 算，**`http://192.168.x.x` 这类局域网 IP 不算**。所以电脑上（localhost）好用、手机上用局域网 IP 打开可能直接被拒 |
+| 手机上会断 | Chrome for Android 的识别会被静音 / 烬屏打断；而且**麦克风不是马上释放的**，旧会话刚结束就 `start()` 会报 `audio-capture`（用户看到「录音被占用」）。所以续听必须**隔 400ms**，且失败要允许重试（最多 3 次）—— 这个坑是安卓真机实测出来的 |
+
+> **结论：语音只适合在电脑上演示**（`localhost` 是安全环境 + 是 Chrome/Edge）。
+> 手机上建议只演示打卡定位（不需要语音）。
+> 真机演示时，用 `F12 → Ctrl+Shift+M` 的手机模式在电脑上演语音，效果一样而且不依赖网络。
 
 想做到**真正离线**的语音识别，得另接本地 Whisper（下模型 + 写服务），那是另一套东西。
 取舍说明写在 `src/composables/useSpeechInput.js` 顶部。
