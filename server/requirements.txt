@@ -1,3 +1,15 @@
 Flask>=3.0
 requests>=2.31
 python-dotenv>=1.0
+
+# 本机语音转文字（server/asr.py 用的）。只有 /api/asr 需要它，
+# 不装也不会影响别的功能 —— asr.py 里是懒加载的，服务照样能起来。
+#
+# 它自带 PyAV 来解码音频，所以【不需要】另外装 ffmpeg。
+#
+# ⚠️ 这里刻意没有钉 `av` 的版本：
+#    faster-whisper 内部会调 `av.open(..., metadata_errors="ignore")`，
+#    而 PyAV 19 已经把这个参数去掉了（直接 TypeError），PyAV 14 又没有
+#    Python 3.12 的预编译包。与其把第三方库钉死在某个版本上（以后一升级就炸），
+#    不如在 asr.py 里自己解码 —— 现在装哪个 av 版本都能跑。
+faster-whisper>=1.0

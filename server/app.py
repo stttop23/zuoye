@@ -25,6 +25,7 @@ AI 智能体代理服务（Flask）
 import json
 import os
 import re
+import threading
 from datetime import date, timedelta
 
 import requests
@@ -1607,9 +1608,96 @@ def geo_reverse():
     return jsonify(amap_reverse(lat, lng))
 
 
+# ==================================================================
+# 六、语音转文字（本机 Whisper）
+#
+# 和上面那个「AI 代理」是两件事，别混：
+#   /api/ai/chat  → 文字进去、文字出来（听懂人话 = 本机 qwen2.5）
+#   /api/asr      → 音频进去、文字出来（听清人话 = 本机 Whisper）
+#
+# 为什么不用浏览器自带的语音识别：
+#   浏览器那个要把音频发到 Google / 微软的服务器 ——
+#   「数据不出这台机器」这句话在语音这一环就破了。
+#   搬到这里之后，整条链路（录音→识别→理解）全在本机。
+#
+# 实现细节和取舍说明见 asr.py 的文件头。
+# ==================================================================
+try:  # 没装 faster-whisper 也要能启动服务，只是 /api/asr 会报错
+    import asr as asr_service
+except ImportError:  # 万一用 `python -m server.app` 启动
+    try:
+        from server import asr as asr_service
+    except ImportError:
+        asr_service = None
+
+# 一次上传的音频大小上限。浏览器录几十秒也就几百 KB，给到 25MB 很宽松了。
+# ⚠️ 加这个是防止有人往这里灌大文件，把内存吃满。
+ASR_MAX_BYTES = 25 * 1024 * 1024
+
+
+@app.post("/api/asr")
+def speech_to_text():
+    if asr_service is None:
+        return jsonify({"ok": False, "error": "服务端没装 faster-whisper"}), 503
+
+    upload = request.files.get("audio")
+    if upload is None:
+        return jsonify({"ok": False, "error": "没有收到音频（字段名要叫 audio）"}), 400
+
+    data = upload.read()
+    if len(data) > ASR_MAX_BYTES:
+        return jsonify({"ok": False, "error": "音频太大了"}), 413
+
+    try:
+        result = asr_service.transcribe(data)
+    except Exception as error:  # 解码失败、模型文件缺失……都别把服务打崩
+        print(f"[ASR] 转写失败：{error}")
+        return jsonify({"ok": False, "error": str(error)[:300]}), 500
+
+    print(f"[ASR] 音频 {result.get('audio_seconds')}s → 用了 {result.get('seconds')}s：{result.get('text')}")
+    return jsonify(result)
+
+
+@app.get("/api/asr/status")
+def asr_status():
+    """前端进来先问一句：用的哪个模型、跑在哪、加载了没。"""
+    if asr_service is None:
+        return jsonify({"ok": False, "error": "服务端没装 faster-whisper"})
+    return jsonify({"ok": True, **asr_service.model_info()})
+
+
+def start_asr_warmup():
+    """
+    后台把 Whisper 预热好（加载模型 + 空跑一次）。
+
+    为什么不直接在主线程里调：加载模型要好几秒，会拖慢服务启动。
+    为什么又要预热：实测「进程里的第一次推理」比后面每一次都慢好几倍，
+    而这个代价会正好落在答辩时说的第一句话上。
+    """
+    if asr_service is None:
+        return
+    threading.Thread(target=asr_service.warm_up, name="asr-warmup", daemon=True).start()
+
+
+# 调试模式开关。
+# 抽成常量是因为下面要用它判断「该不该预热」——
+# 直接读 app.debug 会踩坑：在 app.run(debug=True) 之前那一刻它还是 False。
+DEBUG = True
+
 if __name__ == "__main__":
     labels = [provider["label"] for provider in build_providers()]
     print("AI 代理已启动： http://127.0.0.1:5000")
     print("模型通道（按优先级）：", " → ".join(labels) if labels else "无（只能走本地规则）")
     print("逆地理编码（坐标→地名）：", "已配 AMAP_KEY" if AMAP_KEY else "未配 AMAP_KEY（打卡只显示坐标）")
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    print(
+        "语音转文字（音频→文字）：",
+        f"本机 Whisper {asr_service.ASR_MODEL}（{asr_service.ASR_DEVICE}/{asr_service.ASR_COMPUTE_TYPE}，首次调用时加载）"
+        if asr_service
+        else "未装 faster-whisper",
+    )
+    # 预热只在「真正处理请求」的那个进程里做。
+    # debug=True 时 Werkzeug 会再起一个子进程来干活（子进程里 WERKZEUG_RUN_MAIN=true），
+    # 父进程只是看着文件变化。两个都预热 = 白占一份内存（模型 1.5GB）也白烧一遍 CPU。
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not DEBUG:
+        start_asr_warmup()
+    app.run(host="127.0.0.1", port=5000, debug=DEBUG)

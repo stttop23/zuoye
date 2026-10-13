@@ -302,6 +302,7 @@ zuoye/
 │   └── main.js                 入口：Element Plus、路由、全局样式
 ├── server/                     AI 代理服务（Flask，调本机模型）
 │   ├── app.py                  工具定义 + 智能体循环 + 日期校正 + 本地规则兜底
+│   ├── asr.py                  本机语音转文字（Whisper，试验用，见 docs 6.4）
 │   ├── mock_data.py            兜底种子（拿不到前端快照时才用；接数据库后删）
 │   ├── requirements.txt
 │   ├── .env                    本机配置（已被 gitignore，不提交）
@@ -374,6 +375,7 @@ zuoye/
 - [x] AI 助手：询问 / 跳转 / 自然语言填表（刘皖）
 - [x] AI 助手独立页面（侧边栏入口，与悬浮抽屉共享同一份对话）
 - [x] AI 助手语音输入（浏览器 Web Speech API，**仅 Chrome / Edge**，需联网且需安全环境）
+- [x] 本机语音转文字 **试验页**（Whisper medium，全离线，`/asr.html`，没并进主流程）
 - [x] 本机模型接入（Ollama + qwen2.5:7b，离线可用、不需要 key）
 - [x] AI 助手降级方案（本机模型 → 本地规则 → 前端兜底）
 - [x] AI 助手只读工具（查待办 / 查公告 / 查请假）

@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>本机语音识别 · 试验页</title>
+    <!--
+      这是一个【独立试验页】，不属于主应用：
+        没进路由、没改任何现有组件，就是一个静态文件。
+        访问方式：http://localhost:5173/asr.html
+
+      用途：验证「本机 Whisper」这条路走不走得通 —— 录一段话，本机转成文字，
+            顺便把识别耗时打在屏幕上（答辩时这个数字很好用）。
+
+      不想要了直接删掉这个文件 + server/asr.py + app.py 里那两段路由即可，零影响。
+    -->
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        font-family: 'Microsoft YaHei', system-ui, sans-serif;
+        color: #303133;
+        background: #f5f7fa;
+      }
+      .card {
+        width: 100%;
+        max-width: 560px;
+        padding: 28px;
+        background: #fff;
+        border: 1px solid #ebeef5;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgb(0 0 0 / 6%);
+      }
+      h1 {
+        margin: 0 0 20px;
+        font-size: 17px;
+        font-weight: 600;
+      }
+      button {
+        width: 100%;
+        padding: 14px;
+        font-size: 15px;
+        font-family: inherit;
+        color: #fff;
+        background: #409eff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      button:hover:not(:disabled) {
+        background: #66b1ff;
+      }
+      button:disabled {
+        background: #c0c4cc;
+        cursor: not-allowed;
+      }
+      button.recording {
+        background: #f56c6c;
+      }
+      .result {
+        min-height: 76px;
+        margin-top: 18px;
+        padding: 14px;
+        font-size: 15px;
+        line-height: 1.7;
+        background: #f5f7fa;
+        border-radius: 8px;
+        white-space: pre-wrap;
+      }
+      .result:empty::before {
+        content: '识别结果';
+        color: #c0c4cc;
+      }
+      .meta {
+        margin-top: 12px;
+        font-size: 12px;
+        color: #909399;
+      }
+      .error {
+        color: #f56c6c;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>本机语音识别（Whisper）</h1>
+
+      <button id="btn" disabled>加载中…</button>
+      <div id="result" class="result"></div>
+      <div id="meta" class="meta"></div>
+    </div>
+
+    <script type="module">
+      const btn = document.getElementById('btn')
+      const resultEl = document.getElementById('result')
+      const metaEl = document.getElementById('meta')
+
+      let recorder = null
+      let chunks = []
+      let startedAt = 0
+      let timer = null
+      let supported = false
+
+      const setMeta = (text, isError = false) => {
+        metaEl.textContent = text
+        metaEl.className = isError ? 'meta error' : 'meta'
+      }
+
+      const setResult = (text) => {
+        resultEl.textContent = text
+      }
+
+      /* ---------- 1. 先问后端：用的哪个模型、跑在哪 ---------- */
+      async function checkBackend() {
+        try {
+          const res = await fetch('/api/asr/status')
+          const data = await res.json()
+          if (!data.ok) throw new Error(data.error || '后端没准备好')
+          setMeta(
+            `${data.model} · ${data.device}/${data.compute_type}` +
+              (data.loaded ? ` · 模型已加载（用了 ${data.load_seconds}s）` : ' · 模型还没加载，第一次识别会慢十几秒'),
+          )
+          return true
+        } catch (error) {
+          setMeta(`后端不可用：${error.message}（确认 Flask 在跑）`, true)
+          return false
+        }
+      }
+
+      /* ---------- 2. 检查浏览器能不能录音 ---------- */
+      function checkBrowser() {
+        // ⚠️ 必须 https 或 localhost：局域网 IP 用 http 打开时浏览器不给麦克风
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setMeta('这个地址不是安全环境（要 localhost 或 https），浏览器不给用麦克风', true)
+          return false
+        }
+        if (typeof MediaRecorder === 'undefined') {
+          setMeta('这个浏览器没有 MediaRecorder', true)
+          return false
+        }
+        return true
+      }
+
+      /* ---------- 3. 录音 ---------- */
+      function pickMimeType() {
+        const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
+        return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || ''
+      }
+
+      async function startRecording() {
+        setResult('')
+
+        let stream
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        } catch (error) {
+          setMeta(`拿不到麦克风：${error.name}（没授权？被别的程序占用？）`, true)
+          return
+        }
+
+        const mimeType = pickMimeType()
+        recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+        chunks = []
+
+        recorder.ondataavailable = (event) => {
+          if (event.data.size) chunks.push(event.data)
+        }
+
+        recorder.onstop = () => {
+          stream.getTracks().forEach((track) => track.stop()) // 松手就关麦克风，别亮着录音灯
+          send(new Blob(chunks, { type: recorder.mimeType }))
+        }
+
+        recorder.start()
+        btn.textContent = '停止'
+        btn.classList.add('recording')
+
+        startedAt = performance.now()
+        timer = setInterval(() => {
+          setMeta(`录音中 ${((performance.now() - startedAt) / 1000).toFixed(1)}s`)
+        }, 100)
+      }
+
+      function stopRecording() {
+        clearInterval(timer)
+        btn.disabled = true
+        btn.textContent = '识别中…'
+        btn.classList.remove('recording')
+        recorder.stop()
+      }
+
+      /* ---------- 4. 发给本机 Flask ---------- */
+      async function send(blob) {
+        const audioSeconds = (performance.now() - startedAt) / 1000
+        const form = new FormData()
+        form.append('audio', blob, 'clip.webm')
+
+        const sentAt = performance.now()
+        try {
+          const res = await fetch('/api/asr', { method: 'POST', body: form })
+          const data = await res.json()
+          const roundTrip = ((performance.now() - sentAt) / 1000).toFixed(2)
+
+          if (!data.ok) throw new Error(data.error || '识别失败')
+
+          setResult(data.text || '（没听清）')
+          setMeta(
+            `音频 ${data.audio_seconds}s（实际录了 ${audioSeconds.toFixed(1)}s）` +
+              ` · 识别 ${data.seconds}s · 含网络往返 ${roundTrip}s` +
+              ` · ${data.model}/${data.device}`,
+          )
+        } catch (error) {
+          setMeta(`识别失败：${error.message}`, true)
+        } finally {
+          btn.disabled = false
+          btn.textContent = '开始录音'
+        }
+      }
+
+      btn.addEventListener('click', () => {
+        if (recorder?.state === 'recording') stopRecording()
+        else startRecording()
+      })
+
+      /* ---------- 启动 ---------- */
+      supported = checkBrowser() && (await checkBackend())
+      if (supported) {
+        btn.disabled = false
+        btn.textContent = '开始录音'
+      } else {
+        btn.textContent = '不可用'
+      }
+    </script>
+  </body>
+</html>
