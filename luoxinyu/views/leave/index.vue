@@ -29,9 +29,10 @@
  * 本页已拆成两个子组件，都在 ./components/ 下：
  * LeaveForm（申请表单，自带校验）、LeaveRecords（申请记录表格）
  */
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserProfile } from '@/composables/userProfile'
+import { leaveRecords, nextId } from '@/composables/appStore'
 import { consumeCommand, pendingCommand } from '@/composables/aiAgent'
 import LeaveForm from './components/LeaveForm.vue'
 import LeaveRecords from './components/LeaveRecords.vue'
@@ -50,46 +51,17 @@ function formatNow() {
   return `${toDateStr(d)} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-/** ---------- 假数据：申请记录 ---------- */
-const allRecords = ref([
-  {
-    id: 3,
-    name: '刘皖',
-    type: '事假',
-    startDate: '2026-09-28',
-    endDate: '2026-09-28',
-    days: 1,
-    reason: '家中有事，需要回家处理',
-    status: '待审批',
-    applyTime: '2026-09-26 20:12',
-  },
-  {
-    id: 2,
-    name: '张晶',
-    type: '病假',
-    startDate: '2026-09-15',
-    endDate: '2026-09-16',
-    days: 2,
-    reason: '感冒发烧，校医院建议休息两天',
-    status: '已通过',
-    applyTime: '2026-09-14 08:30',
-  },
-  {
-    id: 1,
-    name: '罗欣雨',
-    type: '年假',
-    startDate: '2026-09-05',
-    endDate: '2026-09-05',
-    days: 1,
-    reason: '参加校外竞赛，需要请假一天',
-    status: '已驳回',
-    rejectionReason: '请补充指导老师同意证明后重新提交。',
-    applyTime: '2026-09-03 19:05',
-  },
-])
+/**
+ * 申请记录统一放在 @/composables/appStore —— 首页数字、通知中心、AI 助手
+ * 读的都是同一份（以前本页内联一份、首页另数一份、后端又手抄一份，三方对不上）。
+ * 顺带好处：appStore 会自动写 localStorage，刷新不再丢。
+ */
+const allRecords = leaveRecords
 
 const records = computed(() =>
-  isAdmin.value ? allRecords.value : allRecords.value.filter((record) => record.name === userName.value),
+  isAdmin.value
+    ? allRecords.value
+    : allRecords.value.filter((record) => record.name === userName.value),
 )
 
 /** 表单校验通过后抛上来，插到记录最前面 */
@@ -99,7 +71,7 @@ function onSubmit(payload) {
     return
   }
   allRecords.value.unshift({
-    id: Date.now(),
+    id: nextId(allRecords.value),
     ...payload,
     name: userName.value,
     status: '待审批',
@@ -131,6 +103,11 @@ async function reviewRecord(row, status) {
     ElMessage.error('只有管理员可以审批请假申请')
     return
   }
+  // 自己不能审自己：管理员也是某个具体的人，「我批我自己的假」说不过去
+  if (row.name === userName.value) {
+    ElMessage.error('不能审批自己的申请')
+    return
+  }
 
   const action = status === '已通过' ? '通过' : '驳回'
   let rejectionReason = ''
@@ -145,8 +122,7 @@ async function reviewRecord(row, status) {
           inputType: 'textarea',
           inputPlaceholder: '驳回原因',
           inputAttrs: { maxlength: '200' },
-          inputValidator: (value) =>
-            value.trim().length >= 2 || '驳回理由至少填写 2 个字',
+          inputValidator: (value) => value.trim().length >= 2 || '驳回理由至少填写 2 个字',
           inputErrorMessage: '驳回理由至少填写 2 个字',
           inputValue: '',
         },

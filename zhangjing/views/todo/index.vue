@@ -33,7 +33,12 @@
           </header>
 
           <div class="calendar-grid" role="grid" aria-label="月历">
-            <div v-for="weekday in weekdays" :key="weekday" class="calendar-weekday" role="columnheader">
+            <div
+              v-for="weekday in weekdays"
+              :key="weekday"
+              class="calendar-weekday"
+              role="columnheader"
+            >
               {{ weekday }}
             </div>
             <button
@@ -58,16 +63,28 @@
                 <i
                   v-for="todo in day.todos.slice(0, 3)"
                   :key="todo.id"
-                  :class="['calendar-dot', `calendar-dot--${todo.status === '已完成' ? 'done' : todo.status === '进行中' ? 'active' : 'pending'}`]"
+                  :class="[
+                    'calendar-dot',
+                    `calendar-dot--${todo.status === '已完成' ? 'done' : todo.status === '进行中' ? 'active' : 'pending'}`,
+                  ]"
                 />
                 <small v-if="day.todos.length > 3">+{{ day.todos.length - 3 }}</small>
               </span>
             </button>
           </div>
           <div class="calendar-legend" aria-label="日程状态图例">
-            <span><i class="calendar-dot calendar-dot--pending" />待办</span>
-            <span><i class="calendar-dot calendar-dot--active" />进行中</span>
-            <span><i class="calendar-dot calendar-dot--done" />已完成</span>
+            <span>
+              <i class="calendar-dot calendar-dot--pending" />
+              待办
+            </span>
+            <span>
+              <i class="calendar-dot calendar-dot--active" />
+              进行中
+            </span>
+            <span>
+              <i class="calendar-dot calendar-dot--done" />
+              已完成
+            </span>
           </div>
         </div>
 
@@ -98,7 +115,12 @@
               class="schedule-item"
               @click="openEdit(todo)"
             >
-              <span :class="['schedule-item__marker', `schedule-item__marker--${todo.status === '已完成' ? 'done' : todo.status === '进行中' ? 'active' : 'pending'}`]" />
+              <span
+                :class="[
+                  'schedule-item__marker',
+                  `schedule-item__marker--${todo.status === '已完成' ? 'done' : todo.status === '进行中' ? 'active' : 'pending'}`,
+                ]"
+              />
               <span class="schedule-item__content">
                 <strong :class="{ 'schedule-item__title--done': todo.status === '已完成' }">
                   {{ todo.title }}
@@ -112,7 +134,9 @@
             </button>
           </div>
           <el-empty v-else :image-size="64" description="这一天还没有安排">
-            <el-button type="primary" link @click="openCreateForSelectedDate">添加当天待办</el-button>
+            <el-button type="primary" link @click="openCreateForSelectedDate">
+              添加当天待办
+            </el-button>
           </el-empty>
         </aside>
       </div>
@@ -213,6 +237,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, ArrowRight, Plus } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
 import { useIsMobile } from '@/composables/useMediaQuery'
+import { nextId, todos } from '@/composables/appStore'
 import { consumeCommand, consumeDraft, pendingCommand, pendingDraft } from '@/composables/aiAgent'
 import TodoStats from './components/TodoStats.vue'
 import TodoToolbar from './components/TodoToolbar.vue'
@@ -228,76 +253,18 @@ const today = new Date()
 const calendarMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1))
 const selectedCalendarDate = ref(toDateKey(today))
 
-const { userName } = useUserProfile()
+const { userName, isAdmin } = useUserProfile()
 /** 大屏直接用按钮，窄屏才用左滑 */
 const isMobile = useIsMobile()
 
 // 负责人下拉：当前的显示名称 + 其他组员，去重
 const assignees = computed(() => [...new Set([userName.value, '张晶', '罗欣雨'])])
 
-const todos = ref([
-  {
-    id: 1,
-    title: '整理期末学生工作总结',
-    description: '汇总各部门工作成果、存在问题和下学期计划。',
-    category: '文档',
-    priority: '高',
-    assignee: userName.value,
-    dueDate: '2026-10-15',
-    status: '待办',
-  },
-  {
-    id: 2,
-    title: '核对校园文化活动报名名单',
-    description: '确认各班级报名信息并反馈缺漏。',
-    category: '活动',
-    priority: '高',
-    assignee: '张晶',
-    dueDate: '2026-10-10',
-    status: '进行中',
-  },
-  {
-    id: 3,
-    title: '更新国庆假期值班安排',
-    description: '核对值班人员和联系方式。',
-    category: '工作',
-    priority: '中',
-    assignee: '罗欣雨',
-    dueDate: '2026-10-08',
-    status: '待办',
-  },
-  {
-    id: 4,
-    title: '汇总志愿服务时长',
-    description: '整理本月志愿服务签到记录。',
-    category: '文档',
-    priority: '低',
-    assignee: '张晶',
-    dueDate: '2026-10-05',
-    status: '已完成',
-  },
-  {
-    id: 5,
-    title: '准备学生会周例会材料',
-    description: '收集本周各部门进展，整理议题。',
-    category: '工作',
-    priority: '中',
-    assignee: userName.value,
-    dueDate: '2026-10-09',
-    status: '进行中',
-  },
-  {
-    id: 6,
-    title: '完成新学期活动复盘',
-    description: '归档活动照片、预算和反馈问卷。',
-    category: '活动',
-    priority: '低',
-    assignee: '罗欣雨',
-    dueDate: '2026-10-20',
-    status: '待办',
-  },
-])
-
+/**
+ * 待办数据统一放在 @/composables/appStore —— 首页数字、通知中心、AI 助手
+ * 读的都是同一份（以前本页内联一份、首页另数一份、后端又手抄一份，三方对不上）。
+ * 顺带好处：appStore 会自动写 localStorage，刷新不再丢。
+ */
 /** ---------- 筛选 + 分页 ---------- */
 const keyword = ref('')
 const statusFilter = ref('全部')
@@ -410,7 +377,11 @@ function selectCalendarDate(day) {
 
 function changeCalendarMonth(offset) {
   const selected = parseDateKey(selectedCalendarDate.value)
-  const nextMonth = new Date(calendarMonth.value.getFullYear(), calendarMonth.value.getMonth() + offset, 1)
+  const nextMonth = new Date(
+    calendarMonth.value.getFullYear(),
+    calendarMonth.value.getMonth() + offset,
+    1,
+  )
   const lastDay = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate()
   calendarMonth.value = nextMonth
   selectedCalendarDate.value = toDateKey(
@@ -476,7 +447,7 @@ function onSave(payload) {
     if (index !== -1) todos.value[index] = { ...todos.value[index], ...payload }
     ElMessage.success('待办已更新')
   } else {
-    todos.value.unshift({ id: Date.now(), ...payload })
+    todos.value.unshift({ id: nextId(todos.value), ...payload })
     ElMessage.success('待办已创建')
   }
   selectedCalendarDate.value = payload.dueDate
@@ -524,7 +495,20 @@ watch(
   { immediate: true },
 )
 
+/**
+ * 删除是要有归属的：自己的随便删；别人的只有管理员能删。
+ * 以前这里不校验，谁都能删掉别人名下的任务（而且 AI 也能替你做）。
+ * ⚠️ 前端拦一层只是体验，真要防住还得后端重验 —— 绕过前端照样能发请求。
+ */
+function canDelete(todo) {
+  return isAdmin.value || todo.assignee === userName.value
+}
+
 async function deleteTodo(todo) {
+  if (!canDelete(todo)) {
+    ElMessage.error(`「${todo.title}」不是你的待办，删不了`)
+    return
+  }
   try {
     await ElMessageBox.confirm(`确定删除「${todo.title}」吗？`, '删除待办', {
       type: 'warning',

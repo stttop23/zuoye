@@ -3,19 +3,19 @@
  * ============
  * 解决的问题：请假被驳回 / 通过了，申请人怎么知道？总不能让老师打电话。
  *
- * ⚠️ 现在通知内容是**假数据**（写在 MOCK_NOTIFICATIONS 里），因为「谁审批、审批结果」
- *    这件事得后端存下来才算数。前端只是把「通知长什么样、怎么看」先做出来。
+ * ⚠️ 通知内容不是手写死的是从 @/composables/appStore 的实时数据【推】出来的：
+ *    请假记录、公告、逾期待办一变，铃铛立刻跟着变（审批完不会没动静）。
+ *    只有「谁审批的」这件事得后端存下来才算数，前端先不做。
  *
  * 接后端之后要改三处：
  *   1. 拉列表：GET  /api/notifications
  *   2. 标已读：POST /api/notifications/read
  *   3. 有新通知时推过来（WebSocket，或每 30 秒轮询一次）
- *   4. MOCK_NOTIFICATIONS 整个删掉
  *
  * 给队友留的钩子：想在自己页面里塞一条通知，调 pushNotification() 就行。
  */
 import { computed, ref } from 'vue'
-import { LEAVE_RECORDS, NOTICES, TODOS } from '@/mock'
+import { leaveRecords, notices as allNotices, todos } from '@/composables/appStore'
 
 /** 已读状态存本地：只存"读过哪些 id"，通知本身还是代码里的，刷新后能对上 */
 const READ_KEY = 'student-work-read-notifications'
@@ -53,12 +53,18 @@ function buildInitialNotifications() {
     已驳回: '请假申请被驳回',
   }
 
-  for (const record of LEAVE_RECORDS) {
+  for (const record of leaveRecords.value) {
     const span = `${record.type} ${record.startDate.slice(5)} ~ ${record.endDate.slice(5)}`
     const extra =
       record.status === '已驳回' && record.rejectionReason ? ` · ${record.rejectionReason}` : ''
     items.push({
-      id: `leave-${record.id}`,
+      /*
+       * id 里带上状态：审批把「待审批」改成「已通过」时，id 跟着变，
+       * 就成了一条【新】通知，铃铛的红点会重新亮起来。
+       * 以前 id 只带记录 id，审批完通知内容变了但 id 没变 →
+       * 之前已读过的还是已读，铃铛一点动静都没有。
+       */
+      id: `leave-${record.id}-${record.status}`,
       type: 'leave',
       title: LEAVE_TITLE[record.status] || '请假状态有更新',
       content: `${record.name} · ${span}${extra}`,
@@ -68,7 +74,7 @@ function buildInitialNotifications() {
   }
 
   // 公告只给置顶的那几条，不然一屏全是公告
-  for (const notice of NOTICES.filter((item) => item.top)) {
+  for (const notice of allNotices.value.filter((item) => item.top)) {
     items.push({
       id: `notice-${notice.id}`,
       type: 'notice',
@@ -83,7 +89,8 @@ function buildInitialNotifications() {
   // 逾期的最多留 2 条 —— 现在有 3 条逾期，全塞进去会把「请假被驳回」那种挤掉，
   // 通知列表本来就该是各种事件混着，不然演示时看着像待办页的复制品。
   const today = todayStr()
-  const overdue = TODOS.filter((todo) => todo.dueDate < today && todo.status !== '已完成')
+  const overdue = todos.value
+    .filter((todo) => todo.dueDate < today && todo.status !== '已完成')
     .sort((a, b) => b.dueDate.localeCompare(a.dueDate))
     .slice(0, 2)
 
@@ -103,7 +110,7 @@ function buildInitialNotifications() {
   return items.sort((a, b) => b.time.localeCompare(a.time)).slice(0, 8)
 }
 
-const MOCK_NOTIFICATIONS = buildInitialNotifications()
+const derivedNotifications = computed(() => buildInitialNotifications())
 
 function readReadIds() {
   try {
@@ -120,8 +127,8 @@ const readIds = ref(readReadIds())
 /** 运行时 push 进来的（排在假数据前面，新的在上面） */
 const pushedItems = ref([])
 
-/** 通知列表：运行时加的 + 假的 */
-export const notifications = computed(() => [...pushedItems.value, ...MOCK_NOTIFICATIONS])
+/** 通知列表：运行时 push 的 + 从数据推出来的 */
+export const notifications = computed(() => [...pushedItems.value, ...derivedNotifications.value])
 
 /** 未读数，给小红点用 */
 export const unreadCount = computed(

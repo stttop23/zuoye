@@ -5,22 +5,22 @@
     </template>
 
     <el-table :data="records" stripe style="width: 100%">
-      <el-table-column type="index" label="序号" width="70" align="center" />
-      <el-table-column v-if="isAdmin" prop="name" label="申请人" width="110" align="center" />
-      <el-table-column prop="type" label="类型" width="90" align="center">
+      <el-table-column type="index" label="序号" width="60" align="center" />
+      <el-table-column v-if="isAdmin" prop="name" label="申请人" width="90" align="center" />
+      <el-table-column prop="type" label="类型" width="80" align="center">
         <template #default="{ row }">
           <el-tag :type="typeTagMap[row.type]" size="small" effect="plain">{{ row.type }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="请假时间" width="210" align="center">
+      <el-table-column label="请假时间" width="190" align="center">
         <template #default="{ row }">{{ row.startDate }} 至 {{ row.endDate }}</template>
       </el-table-column>
-      <el-table-column prop="days" label="天数" width="80" align="center" />
-      <el-table-column prop="reason" label="原因" min-width="200" show-overflow-tooltip />
+      <el-table-column prop="days" label="天数" width="70" align="center" />
+      <el-table-column prop="reason" label="原因" min-width="160" show-overflow-tooltip />
       <el-table-column
         prop="rejectionReason"
         label="驳回理由"
-        min-width="180"
+        min-width="110"
         show-overflow-tooltip
       >
         <template #default="{ row }">
@@ -30,7 +30,7 @@
           <span v-else class="leave__muted">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="100" align="center">
+      <el-table-column label="状态" width="95" align="center">
         <template #default="{ row }">
           <el-tag
             :type="statusTagMap[row.status] || 'info'"
@@ -44,8 +44,8 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="applyTime" label="提交时间" width="170" align="center" />
-      <el-table-column label="操作" :width="isAdmin ? 170 : 90" align="center">
+      <el-table-column prop="applyTime" label="提交时间" width="140" align="center" />
+      <el-table-column label="操作" :width="isAdmin ? 130 : 80" align="center">
         <template #default="{ row }">
           <template v-if="isAdmin && row.status === '待审批'">
             <el-button type="success" link @click="emit('review', row, '已通过')">通过</el-button>
@@ -74,6 +74,10 @@
 /**
  * 申请记录表格：纯展示 + 抛事件。
  * 只有「待审批」的行才显示撤销按钮，确认逻辑由父级处理。
+ *
+ * ⚠️ 列宽是有预算的：固定列加起来必须小于「屏幕宽 - 侧边栏 - 内边距」，
+ *    否则一超宽就出横向滚动条，而「操作」列在最后一列 —— 看着就是「被截掉了」。
+ *    1440 的屏上可用约 1170，这里固定列合计约 880，剩下留给两个自适应列。
  */
 import { Check, Clock, Close } from '@element-plus/icons-vue'
 

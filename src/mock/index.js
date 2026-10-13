@@ -15,11 +15,12 @@
  *   后端那个 `server/mock_data.py` 也一起删掉（它现在是手抄这里的一份，
  *   留着就是等着两边不一致）。
  *
- * ⚠️ 现在还有一份「漏网」：
- *   `zhangjing/views/todo/index.vue` 和 `luoxinyu/views/leave/index.vue`
- *   里各自还留着内联的假数据（那是她们的页面，我没动）。
- *   本文件里的 TODOS / LEAVE_RECORDS 是和它们**对齐**的同一份。
- *   要彻底只有一个源头，得她们把那几行删掉、改成 import 本文件 —— 这事得她们自己做。
+ * ⚠️ 现在它只是「**初始种子**」：真正跑起来的数据在 `src/composables/appStore.js`，
+ *    那里把这份种子装进 ref、加上 localStorage 持久化，页面统一从那边拿。
+ *    所以在页面上新建/删除的东西刷新也不会丢，而直接改本文件只影响「第一次打开」。
+ *
+ *    以前还有两处「漏网」：`zhangjing/views/todo/index.vue` 和
+ *    `luoxinyu/views/leave/index.vue` 里各自内联了一份，现已一并收归 appStore。
  */
 
 /** 小组成员（写死，因为它不是业务数据） */
@@ -199,6 +200,22 @@ export const TODOS = [
 
 /** ---------- 请假记录（与 luoxinyu/views/leave/index.vue 对齐） ---------- */
 export const LEAVE_RECORDS = [
+  /*
+   * 这条是【别人】的待审批申请，故意的：
+   * 审批有个「不能批自己的申请」的校验，而当前登录用户就是刘皖 ——
+   * 如果待审批的全是刘皖自己的，管理员在演示时就没东西可批了。
+   */
+  {
+    id: 4,
+    name: '罗欣雨',
+    type: '事假',
+    startDate: '2026-10-16',
+    endDate: '2026-10-16',
+    days: 1,
+    reason: '参加校外竞赛需要提前到场准备',
+    status: '待审批',
+    applyTime: '2026-10-12 09:20',
+  },
   {
     id: 3,
     name: '刘皖',
@@ -236,19 +253,7 @@ export const LEAVE_RECORDS = [
 ]
 
 /**
- * 首页那四个数字。
- * 注意这是**算出来的**，不是手写的 —— 手写的数字迟早和页面对不上。
+ * 首页那四个数字、最新公告都不在这里了 —— 它们得从**运行时的**同一份数据里数出来，
+ * 见 `src/composables/appStore.js` 的 dashboardSummary() / latestNotices()。
+ * 本文件只负责当「初始种子」，页面不再直接 import 这里的数组。
  */
-export function dashboardSummary() {
-  return {
-    todo: TODOS.length,
-    leave: LEAVE_RECORDS.length,
-    notice: NOTICES.length,
-    member: MEMBERS.length,
-  }
-}
-
-/** 首页「最新公告」：置顶优先，然后按 id 从大到小（和公告页排法一致） */
-export function latestNotices(limit = 3) {
-  return [...NOTICES].sort((a, b) => Number(b.top) - Number(a.top) || b.id - a.id).slice(0, limit)
-}

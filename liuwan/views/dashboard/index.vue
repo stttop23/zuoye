@@ -39,7 +39,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, List, User, Warning } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
-import { dashboardSummary, latestNotices } from '@/mock'
+import { dashboardSummary, latestNotices } from '@/composables/appStore'
 import CheckIn from './components/CheckIn.vue'
 import StatCards from './components/StatCards.vue'
 import QuickActions from './components/QuickActions.vue'
@@ -49,9 +49,10 @@ const router = useRouter()
 const { userName, userInitial } = useUserProfile()
 
 /**
- * 四个数字全部从 @/mock 里【数出来】，不再手写。
+ * 四个数字全部从 @/composables/appStore 里【数出来】，不再手写。
  * 以前这里是写死的 {todo:5, leave:2, notice:3, member:4}，
  * 而公告页实际有 12 条、待办页有 6 条 —— 首页和页面直接对不上。
+ * 现在它和页面共用同一份数据，所以在待办页删一条、发一条公告，这里立刻跟着变。
  */
 const summary = computed(() => dashboardSummary())
 
@@ -87,7 +88,7 @@ const stats = computed(() => [
 ])
 
 /**
- * 最新公告：直接从公告页那份数据里取前 3 条。
+ * 最新公告：直接从公告页那份数据里取前 3 条（同一份，所以在公告页发一条，这里马上就有）。
  * 以前首页另手写了一份，结果「校园文化活动报名开始啦」
  * 首页写 09-20、公告页写 10-01 —— 同一个活动两个日期。
  */

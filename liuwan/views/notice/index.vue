@@ -38,6 +38,9 @@
       :notice="currentNotice"
       @confirm-read="onConfirmRead"
     />
+
+    <!-- ==================== 发布弹窗（子组件） ==================== -->
+    <NoticePublishDialog v-model="publishVisible" @publish="onPublished" />
   </div>
 </template>
 
@@ -56,20 +59,25 @@ import { Plus } from '@element-plus/icons-vue'
 import NoticeFilter from './components/NoticeFilter.vue'
 import NoticeTable from './components/NoticeTable.vue'
 import NoticeDetailDialog from './components/NoticeDetailDialog.vue'
-import { NOTICES } from '@/mock'
+import NoticePublishDialog from './components/NoticePublishDialog.vue'
+import { nextId, notices } from '@/composables/appStore'
+import { useUserProfile } from '@/composables/userProfile'
 import { usePermissions } from '@/composables/permissions'
 import { consumeCommand, pendingCommand } from '@/composables/aiAgent'
 
 /** 谁能发布公告（见 src/composables/permissions.js） */
 const { canDo } = usePermissions()
 
+/** 发布人就是当前用户 */
+const { userName } = useUserProfile()
+
 /**
- * 公告数据统一放在 @/mock —— 首页的「最新公告」和四个统计数字也读那一份。
- * 以前这里内联了一整份，首页又另手抄了一份，
- * 结果同一个「校园文化活动报名开始啦」首页写 09-20、这里写 10-01。
- * 数据只能有一个源头，否则改动时总有一边忘掉。
+ * 公告数据统一放在 @/composables/appStore —— 首页的「最新公告」、四个统计数字、
+ * 顶栏通知中心、AI 助手读的都是同一份（以前这里内联一整份、首页又手抄一份，
+ * 同一个「校园文化活动报名开始啦」首页写 09-20、这里写 10-01）。
+ * 顺带好处：appStore 会自动写 localStorage，刷新不再丢。
  */
-const allNotices = ref(NOTICES)
+const allNotices = notices
 
 /** ---------- 搜索 / 筛选 ---------- */
 const keyword = ref('')
@@ -128,6 +136,9 @@ function handleSizeChange(size) {
 const dialogVisible = ref(false)
 const currentNotice = ref(null)
 
+/** ---------- 发布弹窗 ---------- */
+const publishVisible = ref(false)
+
 function openDetail(row) {
   currentNotice.value = row
   dialogVisible.value = true
@@ -139,7 +150,20 @@ function onConfirmRead() {
 }
 
 function onPublish() {
-  ElMessage.info('发布功能由后端接口支持，当前为前端演示版本')
+  publishVisible.value = true
+}
+
+/** 发布弹窗收集完字段后抛上来，真的插进列表（首页数字、通知中心会跟着变） */
+function onPublished(payload) {
+  allNotices.value.unshift({
+    id: nextId(allNotices.value),
+    author: userName.value,
+    ...payload,
+  })
+  keyword.value = ''
+  typeFilter.value = ''
+  currentPage.value = 1
+  ElMessage.success('公告已发布')
 }
 
 // ---- AI 助手：「看看奖学金那条公告」→ 搜出来并直接打开详情 ----
