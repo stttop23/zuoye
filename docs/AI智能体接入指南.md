@@ -89,8 +89,7 @@ graph TD
 | `src/composables/aiAgent.js` | 对话状态、`pendingDraft` 动作总线、前端兜底、日期解析 |
 | `src/composables/useSpeechInput.js` | 语音输入（浏览器 Web Speech API 的封装） |
 | `src/components/AiAssistant.vue` | 右下角悬浮入口（只有悬浮按钮 + 抽屉壳） |
-| `src/components/AiChatPanel.vue` | **聊天的本体**（消息列表 + 输入区 + 语音），抽屉和独立页面共用 |
-| `server/mock_data.py` | **临时**假数据：只读工具要查的那三张表（抄自三个页面，接了数据库就删） |
+| `src/components/AiChatPanel.vue` | **聊天的本体**（消息列表 + 输入区 + 语音），抽屉和独立页面共用 || `server/mock_data.py` | **临时**假数据：只读工具要查的那三张表（抄自三个页面，接了数据库就删） |
 | `src/composables/notifications.js` | 顶栏通知中心：通知列表 + 未读数 + 已读状态（见第十四节） |
 | `liuwan/views/dashboard/components/CheckIn.vue` | 每日打卡，带地理位置（见第十三节） |
 | `liuwan/views/assistant/index.vue` | AI 助手独立页面 |
@@ -270,7 +269,6 @@ AI 填好表之后会**自动跳转到那个页面**并收起聊天窗，等你�
 > ⚠️ 实现上有个坑，见第十节「坑 7」。
 
 ### 6.6 两个入口，同一份对话
-
 同一个助手有两个入口：
 
 | 入口 | 怎么进 | 适合 |

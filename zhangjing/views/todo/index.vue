@@ -130,59 +130,44 @@
         :categories="categories"
       />
 
-      <el-table :data="pagedTodos" stripe style="width: 100%">
-        <el-table-column label="任务" min-width="250">
-          <template #default="{ row }">
-            <div :class="['task-title', { 'task-title--done': row.status === '已完成' }]">
-              {{ row.title }}
+      <!--
+        任务列表：左滑露出操作（完成 / 编辑 / 删除）。
+        原来这里是一张 el-table，操作按钮在右边常驻占一列。换成滑动卡片后：
+          - 操作按钮平时不占位置，任务内容能占满整行；
+          - 手机上不再被表格的横向宽度挤爆；
+          - 完成 / 重新打开 / 编辑 / 删除 四个动作一个都没丢。
+      -->
+      <div v-if="pagedTodos.length" class="task-list">
+        <SwipeRow v-for="row in pagedTodos" :key="row.id" :width="208" class="task-list__item">
+          <div class="task" :class="{ 'task--done': row.status === '已完成' }">
+            <div class="task__title">{{ row.title }}</div>
+            <div v-if="row.description" class="task__desc">{{ row.description }}</div>
+            <div class="task__meta">
+              <el-tag size="small" effect="plain">{{ row.category }}</el-tag>
+              <el-tag :type="priorityTagMap[row.priority]" size="small" effect="plain">
+                {{ row.priority }}
+              </el-tag>
+              <span>{{ row.assignee }}</span>
+              <span :class="{ 'due-date--late': isOverdue(row) }">{{ row.dueDate }}</span>
+              <el-tag :type="statusTagMap[row.status]" size="small">{{ row.status }}</el-tag>
             </div>
-            <div v-if="row.description" class="task-description">
-              {{ row.description }}
-            </div>
+          </div>
+
+          <template #actions>
+            <button type="button" class="swipe-btn swipe-btn--done" @click="toggleComplete(row)">
+              {{ row.status === '已完成' ? '重新打开' : '完成' }}
+            </button>
+            <button type="button" class="swipe-btn swipe-btn--edit" @click="openEdit(row)">
+              编辑
+            </button>
+            <button type="button" class="swipe-btn swipe-btn--delete" @click="deleteTodo(row)">
+              删除
+            </button>
           </template>
-        </el-table-column>
-        <el-table-column prop="category" label="分类" width="100" align="center" />
-        <el-table-column label="优先级" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="priorityTagMap[row.priority]" size="small" effect="plain">
-              {{ row.priority }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="assignee" label="负责人" width="100" align="center" />
-        <el-table-column label="截止日期" width="130" align="center">
-          <template #default="{ row }">
-            <span :class="{ 'due-date--late': isOverdue(row) }">{{ row.dueDate }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="110" align="center">
-          <template #default="{ row }">
-            <el-tag :type="statusTagMap[row.status]" size="small">
-              {{ row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" min-width="190" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button
-              v-if="row.status !== '已完成'"
-              type="success"
-              link
-              @click="toggleComplete(row)"
-            >
-              完成
-            </el-button>
-            <el-button v-else type="info" link @click="toggleComplete(row)">
-              重新打开
-            </el-button>
-            <el-button type="primary" link @click="openEdit(row)">编辑</el-button>
-            <el-button type="danger" link @click="deleteTodo(row)">删除</el-button>
-          </template>
-        </el-table-column>
-        <template #empty>
-          <el-empty description="没有符合条件的待办事项" />
-        </template>
-      </el-table>
+        </SwipeRow>
+      </div>
+
+      <el-empty v-else description="没有符合条件的待办事项" />
 
       <div class="pagination">
         <el-pagination
@@ -226,6 +211,7 @@ import { consumeDraft, pendingDraft } from '@/composables/aiAgent'
 import TodoStats from './components/TodoStats.vue'
 import TodoToolbar from './components/TodoToolbar.vue'
 import TodoDialog from './components/TodoDialog.vue'
+import SwipeRow from '@/components/SwipeRow.vue'
 
 const categories = ['工作', '活动', '学习', '文档', '其他']
 const editableStatuses = ['待办', '进行中', '已完成']
@@ -813,23 +799,89 @@ async function deleteTodo(todo) {
 .status-tabs {
   margin-bottom: var(--st-gap-base);
 }
-.task-title {
+/* ---------- 任务列表（左滑操作） ---------- */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-list__item {
+  border: 1px solid var(--st-border-color-hair);
+  transition:
+    border-color var(--st-duration-base) var(--st-ease),
+    box-shadow var(--st-duration-base) var(--st-ease);
+}
+
+.task-list__item:hover {
+  border-color: var(--st-primary-glow);
+  box-shadow: var(--st-shadow-card);
+}
+
+.task {
+  padding: 14px 16px;
+  transition: background-color var(--st-duration-fast) var(--st-ease);
+}
+
+.task-list__item:hover .task {
+  background: var(--st-primary-lighter);
+}
+
+.task__title {
   color: var(--st-text-primary);
+  font-size: 15px;
   font-weight: 600;
 }
 
-.task-title--done {
+.task--done .task__title {
   color: var(--st-text-secondary);
   text-decoration: line-through;
 }
 
-.task-description {
-  overflow: hidden;
+.task__desc {
   margin-top: 4px;
   color: var(--st-text-secondary);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 13px;
+}
+
+.task__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--st-text-secondary);
+  font-size: 13px;
+}
+
+/* ---------- 左滑露出来的操作按钮 ---------- */
+/* 三个按钮宽度加起来 = SwipeRow 的 :width，不然会露出缝隙 */
+.swipe-btn {
+  width: 62px;
+  border: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  appearance: none;
+  cursor: pointer;
+}
+
+.swipe-btn--done {
+  width: 84px;
+  background: linear-gradient(135deg, #7ed06a 0%, #52b23a 100%);
+}
+
+.swipe-btn--edit {
+  background: linear-gradient(135deg, #6fb4f5 0%, #2b7cd3 100%);
+}
+
+.swipe-btn--delete {
+  background: linear-gradient(135deg, #f88c8c 0%, #e04b4b 100%);
+}
+
+.swipe-btn:active {
+  filter: brightness(0.94);
 }
 
 .due-date--late {
