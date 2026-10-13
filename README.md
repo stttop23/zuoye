@@ -46,8 +46,10 @@
 
 - **AI 助手悬浮球可以拖着挪位置** —— 松手会吸附到最近的左右边缘（停在中间会挡内容），
   垂直高度按你拖到的地方保留，刷新也记得（存 localStorage）。抽屉从哪边弹出来跟着按钮走。
-- **待办事项左滑露出操作** —— 往左划一下就是「完成 / 编辑 / 删除」，
+- **待办事项左滑露出操作** —— 手机上往左划一下就是「完成 / 编辑 / 删除」，
   不用再去够右边那排小按钮；同时只会打开一行，点行内容或点完操作都会自己收回去。
+  **大屏不滑**：屏幕宽的时候按钮直接排在行右边（滑动是触屏手势，鼠标划反而别扭，
+  而且大屏本来就有地方）。这个切换由 `SwipeRow` 的 `disabled` 属性控制。
 
 ## 二、小组成员及分工
 
@@ -158,7 +160,7 @@ color: #303133;
 | 一排卡片挨个出现 | 再加 `st-delay-1` ~ `st-delay-6`（错峰，别一次全冒出来） |
 | 图标 / 徽标「弹」出来 | `st-pop` |
 | 数字从 0 滚上来 | `<CountUp :value="6" />`（`src/components/CountUp.vue`） |
-| 列表项左滑露出操作 | `<SwipeRow>`（`src/components/SwipeRow.vue`，鼠标拖也行，桌面上能演示） |
+| 列表项左滑露出操作 | `<SwipeRow>`（`src/components/SwipeRow.vue`）；大屏传 `:disabled` 就变成「按钮直接排在右边」 |
 | 悬停抬升 | `transform: translateY(-4px)` + `--st-shadow-hover` |
 | 缓动曲线 | `--st-ease`（标准）/ `--st-ease-back`（带一点回弹） |
 
@@ -329,7 +331,7 @@ zuoye/
 - [x] 界面动效升级（胶囊菜单、页面过渡、数字滚动、无障碍适配）
 - [x] 移动端适配（窄屏侧边栏变抽屉，断点 768px）
 - [x] AI 悬浮球可拖动 + 边缘吸附（位置记在 localStorage）
-- [x] 待办事项左滑操作（抽出 `src/components/SwipeRow.vue`，别人也能复用）
+- [x] 待办事项左滑操作（大屏改为按钮直排；抽出 `src/components/SwipeRow.vue`）
 - [x] 公告页手机版只显示标题（断点判断抽成 `src/composables/useMediaQuery.js`）
 - [ ] AI 代理部署到线上服务器
 - [ ] 后端接口对接

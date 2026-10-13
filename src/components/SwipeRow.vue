@@ -1,19 +1,20 @@
 <template>
-  <div class="swipe-row">
+  <div class="swipe-row" :class="{ 'is-static': disabled }">
     <!--
-      藏在后面的操作按钮：内容向左滑开就露出来。
-      @click="收起" 是等按钮自己的处理跑完之后冒泡上来，
-      点完任何一个操作都把这一行收回去。
+      操作按钮。
+      小屏 / 触屏：藏在这一行后面，内容向左滑开就露出来。
+      大屏：直接排到行右边（就是 is-static 那个模式），不需要滑。
+      @click="收起" 是等按钮自己的处理跑完之后冒泡上来，点完任何一个都收回这一行。
     -->
-    <div class="swipe-row__actions" @focusin="打开" @click="收起">
+    <div class="swipe-row__actions" :class="{ 'is-inline': disabled }" @focusin="打开" @click="收起">
       <slot name="actions" />
     </div>
 
-    <!-- 跟着手指 / 鼠标走的那一层 -->
+    <!-- 跟着手指 / 鼠标走的那一层（静态模式下它就是个普通容器） -->
     <div
       class="swipe-row__content"
       :class="{ 'is-animating': !dragging }"
-      :style="{ transform: `translateX(${offset}px)` }"
+      :style="disabled ? null : { transform: `translateX(${offset}px)` }"
       @pointerdown="按下"
       @pointermove="移动"
       @pointerup="松手"
@@ -54,6 +55,11 @@ import { ref } from 'vue'
 const props = defineProps({
   /** 操作区总宽度（px），要和 actions 里按钮的宽度合得上 */
   width: { type: Number, default: 200 },
+  /**
+   * 静态模式：不滑动，按钮直接排在行右边。
+   * 大屏上用它 —— 屏幕有地方，鼠标划来划去反而别扭。
+   */
+  disabled: { type: Boolean, default: false },
 })
 
 const offset = ref(0)
@@ -76,13 +82,14 @@ function 收起() {
 }
 
 function 打开() {
-  if (offset.value !== 0) return
+  if (props.disabled || offset.value !== 0) return
   if (上一个打开的行 && 上一个打开的行 !== 收起) 上一个打开的行()
   上一个打开的行 = 收起
   offset.value = -props.width
 }
 
 function 按下(e) {
+  if (props.disabled) return
   if (e.pointerType === 'mouse' && e.button !== 0) return
   dragging.value = true
   起点X = e.clientX
@@ -126,6 +133,7 @@ function 松手() {
 }
 
 function 点的时候(e) {
+  if (props.disabled) return
   // ① 刚拖过：这次 click 是拖拽的副产品，拦掉
   if (拖过) {
     拖过 = false
@@ -172,5 +180,34 @@ defineExpose({ 收起 })
 
 .swipe-row__content.is-animating {
   transition: transform var(--st-duration-base) var(--st-ease);
+}
+
+/* ============================================================
+   静态模式（大屏）
+   ------------------------------------------------------------
+   屏幕宽的时候不藏按钮，直接排到这一行右边。
+   原因：滑动是触屏的手势，台式机用鼠标划反而别扭，而且大屏本来就有地方。
+   ============================================================ */
+.swipe-row.is-static {
+  display: flex;
+  align-items: center;
+}
+
+.swipe-row.is-static .swipe-row__actions {
+  position: static;
+  order: 2;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding-right: 12px;
+}
+
+.swipe-row.is-static .swipe-row__content {
+  order: 1;
+  flex: 1;
+  min-width: 0;
+  /* 静态模式下不看手势，竖向横向都还给页面 */
+  touch-action: auto;
+  will-change: auto;
 }
 </style>

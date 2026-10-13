@@ -138,7 +138,14 @@
           - 完成 / 重新打开 / 编辑 / 删除 四个动作一个都没丢。
       -->
       <div v-if="pagedTodos.length" class="task-list">
-        <SwipeRow v-for="row in pagedTodos" :key="row.id" :width="208" class="task-list__item">
+        <SwipeRow
+          v-for="row in pagedTodos"
+          :key="row.id"
+          :width="208"
+          :disabled="!isMobile"
+          class="task-list__item"
+          :class="{ 'task-list__item--static': !isMobile }"
+        >
           <div class="task" :class="{ 'task--done': row.status === '已完成' }">
             <div class="task__title">{{ row.title }}</div>
             <div v-if="row.description" class="task__desc">{{ row.description }}</div>
@@ -207,6 +214,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, ArrowRight, Plus } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
+import { useIsMobile } from '@/composables/useMediaQuery'
 import { consumeDraft, pendingDraft } from '@/composables/aiAgent'
 import TodoStats from './components/TodoStats.vue'
 import TodoToolbar from './components/TodoToolbar.vue'
@@ -223,6 +231,8 @@ const calendarMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1))
 const selectedCalendarDate = ref(toDateKey(today))
 
 const { userName } = useUserProfile()
+/** 大屏直接用按钮，窄屏才用左滑 */
+const isMobile = useIsMobile()
 
 // 负责人下拉：当前的显示名称 + 其他组员，去重
 const assignees = computed(() => [...new Set([userName.value, '张晶', '罗欣雨'])])
@@ -882,6 +892,37 @@ async function deleteTodo(todo) {
 
 .swipe-btn:active {
   filter: brightness(0.94);
+}
+
+/*
+ * ---------- 大屏：按钮直接排在行右边 ----------
+ * 屏幕宽就别让人去「划」了 —— 滑动是触屏手势，鼠标划起来别扭，
+ * 而且大屏本来就有地方放三个按钮。
+ * 复用同一批按钮，只把样式从「彩色色块」换成「文字按钮」，不要那么吵。
+ */
+.task-list__item--static .swipe-btn {
+  width: auto;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--st-radius-sm);
+  font-weight: 400;
+  background: none;
+}
+
+.task-list__item--static .swipe-btn:hover {
+  background: var(--st-bg-hover);
+}
+
+.task-list__item--static .swipe-btn--done {
+  color: var(--st-success);
+}
+
+.task-list__item--static .swipe-btn--edit {
+  color: var(--st-primary);
+}
+
+.task-list__item--static .swipe-btn--delete {
+  color: var(--st-danger);
 }
 
 .due-date--late {
