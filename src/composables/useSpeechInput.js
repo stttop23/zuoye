@@ -24,7 +24,7 @@ import { onBeforeUnmount, ref } from 'vue'
 const ERROR_MESSAGES = {
   'not-allowed': '没有麦克风权限。点地址栏左边的锁图标，把「麦克风」改成允许。',
   'service-not-allowed': '浏览器拒绝了语音服务，检查一下麦克风权限。',
-  'audio-capture': '麦克风被占用了（可能有别的 App 在录音，或者松手后按得太快）。',
+  'audio-capture': '麦克风被占用了（可能有别的 App 在录音，或者刚停就又开了）。',
   network: '语音识别连不上网。注意：它不是本机识别的，需要联网。',
 }
 
@@ -144,7 +144,7 @@ export function useSpeechInput({ lang = 'zh-CN', onText, onError } = {}) {
   function stop() {
     if (!listening.value) return
     listening.value = false // 先置 false，onend 就不会再自动续听
-    clearTimeout(restartTimer) // 把排着的「续听」取消掉，否则松手后它又把麦克风打开
+    clearTimeout(restartTimer) // 把排着的「续听」取消掉，否则停止后它又把麦克风打开
     try {
       recognition?.stop()
     } catch {

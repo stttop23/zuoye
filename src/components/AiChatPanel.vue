@@ -53,15 +53,12 @@
                 class="ai-chat__voice"
                 :type="listening ? 'danger' : undefined"
                 :disabled="!voiceSupported"
-                @pointerdown="startHold"
-                @keydown.space.prevent="startHold"
-                @keyup.space="stopHold"
-                @contextmenu.prevent
+                @click="toggleVoice(draft)"
               >
                 <el-icon class="ai-chat__mic" :class="{ 'is-listening': listening }">
                   <Microphone />
                 </el-icon>
-                {{ listening ? '松开停止' : '按住说话' }}
+                {{ listening ? '停止' : '说话' }}
               </el-button>
             </span>
           </el-tooltip>
@@ -87,7 +84,7 @@
  * 「听懂」由后端负责，「填表」由页面负责，这里不掺和。
  * 填完表要把用户带去哪个页面，也由 aiAgent.js 的 runActions 决定。
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Microphone } from '@element-plus/icons-vue'
@@ -115,13 +112,21 @@ const suggestions = [
 ]
 
 /* ---------- 语音输入 ---------- */
-// ⚠️ 用的是浏览器自带能力：只有 Chrome / Edge 有，而且【需要联网】
-// （音频会发到微软 / Google 的服务器，不是本机识别——详见 useSpeechInput.js 顶部说明）
+/*
+ * ⚠️ 用的是浏览器自带能力：只有 Chrome / Edge 有，而且【需要联网】
+ *（音频会发到微软 / Google 的服务器，不是本机识别——详见 useSpeechInput.js 顶部说明）。
+ *
+ * 「点一下开始、再点一下停」，刻意【不用】「按住说话」：
+ * 长按会被【系统级】的「选择 / 复制」手势打断 —— 鼠标按住时稍有移动就开始拖选文字，
+ * 触摸屏上长按会弹系统菜单，按住的过程被切断，用户看到的就是「按着按着就没了」。
+ * 这些靠 touch-action / preventDefault 挡不干净。点击没这个问题，按钮本身也有按下反馈。
+ *（识别的文字会先落在输入框里、随时能改，所以本来就不需要用户一直按着。）
+ */
 const {
   supported: voiceSupported,
   listening,
-  start: startVoice,
   stop: stopVoice,
+  toggle: toggleVoice,
 } = useSpeechInput({
   onText: (text) => {
     draft.value = text
@@ -135,36 +140,6 @@ const voiceTip = computed(() => {
     return '这个浏览器没有语音识别（只有 Chrome / Edge 有，Safari 和 Firefox 没有）'
   return ''
 })
-
-/*
- * ---------- 语音：按住说话，松手结束 ----------
- * 为什么不用点击：点击是「按一下切开关」，说话根本来不及 —— 真实场景里
- * 你得一直按着（跟微信语音一个手感）。所以按下开始、松手结束。
- */
-let holding = false
-
-function startHold(event) {
-  if (!voiceSupported.value || listening.value) return
-  // 只认左键 / 触屏 / 手写笔；右键、中键不参与
-  if (event?.type === 'pointerdown' && event.button > 0) return
-  holding = true
-  // 把输入框里已有的内容传进去，识别结果接在后面，不会覆盖
-  startVoice(draft.value)
-  // ⚠️ 松手可能发生在按钮外面（手指滑出去、鼠标移开），所以监听挂在 window 上
-  window.addEventListener('pointerup', stopHold)
-  window.addEventListener('pointercancel', stopHold)
-}
-
-function stopHold() {
-  window.removeEventListener('pointerup', stopHold)
-  window.removeEventListener('pointercancel', stopHold)
-  if (!holding) return
-  holding = false
-  stopVoice() // 已经识别出来的文字会留在输入框里
-}
-
-// 按住不放就离开页面也要摘干净，不然监听会一直挂在那里
-onBeforeUnmount(stopHold)
 
 /* ---------- 滚动到底 ---------- */
 onMounted(scrollToBottom) // 从抽屉切到页面时，先看到最新一条
@@ -286,11 +261,12 @@ function useSuggestion(content) {
 }
 
 /*
- * 语音按钮是「按住说话」，不是点击开关。
- * 手机上长按按钮会跳出系统的选择 / 复制菜单，按住的过程就断了，所以都挡掉。
+ * 语音按钮是「点击说话」。
+ * 只保留 user-select / touch-callout 的屏蔽：免得双击按钮时把「说话」两个字选中，
+ * 也不至于长按时弹系统菜单。注意【没有】touch-action: none ——
+ * 那会阻止从按钮上开始的页面滚动，而按钮现在不需要按住，没必要付这个代价。
  */
 .ai-chat__voice {
-  touch-action: none;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
