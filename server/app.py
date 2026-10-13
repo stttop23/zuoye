@@ -154,6 +154,16 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_in",
+            "description": "帮用户完成今天的打卡。用户说「帮我打卡」「打个卡」「今天还没打卡」时调用。",
+            # 打卡不需要参数：时间用当天，位置用浏览器定位。
+            # 服务端【做不了】这件事 —— 定位是浏览器的能力，所以这里只递一个信号给前端。
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 
     # ---------------- 下面三个是【只读】工具：只查数据，不改任何东西 ----------------
     # 它们让 AI 从「会填表」变成「知道事」。
@@ -226,12 +236,17 @@ SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用
 - go_to_page：切换页面
 - fill_leave_form：把请假信息填进请假表单（只填、不提交）
 - create_todo：打开新建待办弹窗并预填
+- check_in：帮用户完成今天的打卡（位置由浏览器定位）
 - list_todos / list_notices / list_leave_records：查数据（只读，不会改任何东西）
 
 用户只是说「打开 / 去 / 进入 某个页面」时，只用 go_to_page，
 不要调只读工具、也不要建任何东西。注意这两句差别很大：
   「打开公告」＝切到公告页，不是念一遍公告列表。
   「有什么公告 / 公告都写了啥」才是查数据。
+
+「打卡」要用 check_in，不能用 go_to_page 代替：他要的是把卡打上，不是看一眼打卡页面。
+调完 check_in 只回一句「正在帮你打卡」就行，【不要】写成「已完成 / 打卡成功」——
+真正打没打成由浏览器说了算（可能今天已经打过，也可能定位被拒）。
 
 硬性规则：
 1. 上面那张日期对照表是【算好的】，直接查表。绝对不要自己推算星期几，
@@ -266,8 +281,7 @@ SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用
 # 用户这句话像是在【下指令或问数据】，而不是纯闲聊。
 # 只有像下指令时才做「追问一次」的补救 —— 不然「你好」也会被逼着乱调工具。
 ACTION_HINT_RE = re.compile(
-    r"请假|病假|事假|年假|休假|待办|任务|事项|公告|通知|新建|添加|建个|加个|"
-    r"打开|进入|跳|帮我|查一|看一下|有哪些|多少|几条|批了吗|通过了吗|逾期"
+    r"请假|病假|事假|年假|休假|待办|任务|事项|公告|通知|新建|添加|建个|加个|打卡|签到|跳|帮我|查一|看一下|有哪些|多少|几条|批了吗|通过了吗|逾期"
 )
 
 NO_TOOL_MARK = "无需工具"
@@ -645,6 +659,10 @@ def action_from_tool(name, args):
     if name == "create_todo":
         fields = clean_todo(args)
         return {"type": "fill", "target": "todo", "fields": fields} if fields else None
+    if name == "check_in":
+        # 打卡整个流程（取定位 → 查地名 → 落记录）都在浏览器里跑：
+        # 定位是浏览器的能力，服务端拿不到坐标。所以这里只递一个信号。
+        return {"type": "checkin"}
     return None
 
 
@@ -907,6 +925,10 @@ def local_todo(text, today):
 def local_parse(text, page):
     """本地兜底解析，覆盖文档里写的那些说法，解析不了就让用户自己填。"""
     today = date.today()
+
+    # 打卡：整个流程在浏览器里跑，这里只回一个动作
+    if re.search(r"打卡|签到", text):
+        return [{"type": "checkin"}], "正在帮你打卡。"
 
     # 想跳页面
     for path, name in PAGES.items():

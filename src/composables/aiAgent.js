@@ -138,6 +138,16 @@ function runActions(actions = []) {
       pendingDraft.value = { target: action.target, fields: action.fields }
       shouldClose = true
       goTo(FILL_TARGET_PAGES[action.target])
+    } else if (action.type === 'checkin') {
+      /*
+       * 打卡只能在前端做（要浏览器定位），所以这里不直接动手，
+       * 而是走和填表同一套「暗号」：放一个 target='checkin' 的草稿，
+       * 再把用户带到工作台 —— CheckIn 组件挂着 watch，接住就自己打。
+       * 顺带把抽屉收起来，让用户能看见打卡卡片真的变了。
+       */
+      pendingDraft.value = { target: 'checkin', fields: {} }
+      shouldClose = true
+      goTo('/dashboard')
     }
   })
 
@@ -266,6 +276,11 @@ function localFallback(text, page) {
       reply: '【本地兜底】已把标题预填进新建弹窗，确认后保存。',
       actions: [{ type: 'fill', target: 'todo', fields: { title } }],
     }
+  }
+
+  // 打卡（后端挂了也能用）
+  if (/打卡|签到/.test(text)) {
+    return { reply: '【本地兜底】正在帮你打卡。', actions: [{ type: 'checkin' }] }
   }
 
   for (const [path, name] of Object.entries({
