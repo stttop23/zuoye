@@ -168,7 +168,15 @@
           class="task-list__item"
           :class="{ 'task-list__item--static': !isMobile }"
         >
-          <div class="task" :class="{ 'task--done': row.status === '已完成' }">
+          <div
+            class="task"
+            :class="{
+              'task--pending': row.status === '待办',
+              'task--active': row.status === '进行中',
+              'task--done': row.status === '已完成',
+              'task--overdue': isOverdue(row),
+            }"
+          >
             <div class="task__title">{{ row.title }}</div>
             <div v-if="row.description" class="task__desc">{{ row.description }}</div>
             <div class="task__meta">
@@ -177,7 +185,9 @@
                 {{ row.priority }}
               </el-tag>
               <span>{{ row.assignee }}</span>
-              <span :class="{ 'due-date--late': isOverdue(row) }">{{ row.dueDate }}</span>
+              <span :class="['task__due-date', { 'task__due-date--late': isOverdue(row) }]">
+                {{ row.dueDate }}
+              </span>
               <el-tag :type="statusTagMap[row.status]" size="small">{{ row.status }}</el-tag>
             </div>
           </div>
@@ -630,7 +640,9 @@ async function deleteTodo(todo) {
   color: var(--st-text-primary);
   cursor: pointer;
   font: inherit;
-  transition: background-color 0.15s ease;
+  transition:
+    background-color var(--st-duration-fast) var(--st-ease),
+    box-shadow var(--st-duration-fast) var(--st-ease);
 }
 
 .calendar-day:hover {
@@ -645,6 +657,7 @@ async function deleteTodo(todo) {
 .calendar-day--selected,
 .calendar-day--selected:hover {
   background: var(--st-primary-light);
+  box-shadow: inset 0 0 0 1px var(--st-primary-glow);
 }
 
 .calendar-day--selected .calendar-day__number {
@@ -669,6 +682,13 @@ async function deleteTodo(todo) {
   place-items: center;
   border-radius: 50%;
   font-size: 13px;
+}
+
+.calendar-day:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--st-primary);
+  outline-offset: -2px;
 }
 
 .calendar-day__events {
@@ -747,10 +767,16 @@ async function deleteTodo(todo) {
   background: var(--st-bg-card);
   cursor: pointer;
   text-align: left;
+  transition:
+    border-color var(--st-duration-fast) var(--st-ease),
+    box-shadow var(--st-duration-fast) var(--st-ease),
+    transform var(--st-duration-fast) var(--st-ease);
 }
 
 .schedule-item:hover {
   border-color: var(--st-primary);
+  box-shadow: var(--st-shadow-card);
+  transform: translateY(-1px);
 }
 
 .schedule-item__marker {
@@ -826,7 +852,8 @@ async function deleteTodo(todo) {
 }
 
 .task-list__item {
-  border: 1px solid var(--st-border-color-hair);
+  border: 1px solid var(--st-border-color-light);
+  border-radius: var(--st-radius-base);
   transition:
     border-color var(--st-duration-base) var(--st-ease),
     box-shadow var(--st-duration-base) var(--st-ease);
@@ -838,8 +865,28 @@ async function deleteTodo(todo) {
 }
 
 .task {
-  padding: 14px 16px;
-  transition: background-color var(--st-duration-fast) var(--st-ease);
+  min-height: 72px;
+  padding: 15px 16px 15px 13px;
+  border-left: 3px solid transparent;
+  transition:
+    background-color var(--st-duration-fast) var(--st-ease),
+    border-color var(--st-duration-fast) var(--st-ease);
+}
+
+.task--pending {
+  border-left-color: var(--st-info);
+}
+
+.task--active {
+  border-left-color: var(--st-warning);
+}
+
+.task--done {
+  border-left-color: var(--st-success);
+}
+
+.task--overdue {
+  border-left-color: var(--st-danger);
 }
 
 .task-list__item:hover .task {
@@ -871,6 +918,24 @@ async function deleteTodo(todo) {
   margin-top: 10px;
   color: var(--st-text-secondary);
   font-size: 13px;
+}
+
+.task__due-date {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--st-radius-pill);
+  background: var(--st-bg-page);
+  color: var(--st-text-regular);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.task__due-date--late {
+  background: var(--st-danger-light);
+  color: var(--st-danger);
+  font-weight: 600;
 }
 
 /* ---------- 左滑露出来的操作按钮 ---------- */
@@ -932,10 +997,6 @@ async function deleteTodo(todo) {
 }
 
 .task-list__item--static .swipe-btn--delete {
-  color: var(--st-danger);
-}
-
-.due-date--late {
   color: var(--st-danger);
 }
 
