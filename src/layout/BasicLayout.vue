@@ -414,22 +414,20 @@ watch(
 .layout {
   height: 100%;
   /*
-   * 页面底色不再是死平的灰：左上角一团很淡的蓝、右上角一点绿。
-   * 淡淡的就行，目的只是让白卡片有“浮在东西上面”的感觉。
+   * 底色就用变量表里的页面灰，【不再叠径向光斑】。
+   * 之前这里有两团很大的径向渐变（左上蓝、右上绿），看着很“亮”，但
+   * 1) 径向大光斑是最容易显土的手法，和「克制、通透」相反；
+   * 2) 它把白卡片的边界搅浑了，卡片反而不突出。
+   * 现在让白卡片自己靠发丝边和柔影浮起来，背景干净就行。
    */
   background-color: var(--st-bg-page);
-  background-image:
-    radial-gradient(1100px 520px at 12% -8%, rgba(64, 158, 255, 0.1), transparent 62%),
-    radial-gradient(900px 480px at 100% 2%, rgba(103, 194, 58, 0.06), transparent 58%);
-  background-attachment: fixed;
 }
 
 /* ---------- 侧边栏 ---------- */
 .layout__aside {
   display: flex;
   flex-direction: column;
-  background: var(--st-gradient-sidebar);
-  border-right: 1px solid var(--st-border-color-hair);
+  background: var(--st-nav-bg);
   transition: width var(--st-duration-base) var(--st-ease);
   overflow: hidden;
 }
@@ -441,7 +439,7 @@ watch(
   height: var(--st-header-height);
   padding: 0 16px;
   white-space: nowrap;
-  border-bottom: 1px solid var(--st-border-color-hair);
+  border-bottom: 1px solid var(--st-nav-divider);
 }
 
 /* logo 图标做成一块渐变小方块，比裸图标有品牌感 */
@@ -466,7 +464,7 @@ watch(
 .layout__logo-text {
   font-size: 15px;
   font-weight: 600;
-  color: var(--st-text-primary);
+  color: #fff;
 }
 
 /* ==================== 菜单 ==================== */
@@ -500,7 +498,8 @@ watch(
   left: -8px;
   width: 3px;
   height: 0;
-  background: var(--st-primary);
+  /* 选中条也用那套 135° 渐变 —— 和标题小横条、卡片顶边是同一道光 */
+  background: var(--grad-blue);
   border-radius: var(--st-radius-pill);
   transform: translateY(-50%);
   transition: height var(--st-duration-base) var(--st-ease-back);
@@ -510,16 +509,22 @@ watch(
   height: 18px;
 }
 
+/* 深色底上的菜单：默认浅白，悬停/选中变纯白。
+   ⚠️ 不能用 --st-primary 那种中蓝色 —— 深底上对比度不够，看着像“没选中” */
+.layout__menu :deep(.el-menu-item) {
+  color: var(--st-nav-text);
+}
+
 .layout__menu :deep(.el-menu-item:hover) {
-  color: var(--st-primary);
-  background: var(--st-primary-lighter);
+  color: var(--st-nav-text-active);
+  background: var(--st-nav-hover-bg);
   transform: translateX(3px);
 }
 
 .layout__menu :deep(.el-menu-item.is-active) {
-  color: var(--st-primary);
+  color: var(--st-nav-text-active);
   font-weight: 600;
-  background: linear-gradient(90deg, var(--st-primary-light) 0%, rgba(236, 245, 255, 0.35) 100%);
+  background: var(--st-nav-active-bg);
 }
 
 .layout__menu :deep(.el-menu-item .el-icon) {
@@ -547,7 +552,7 @@ watch(
 /* ---------- 侧边栏底部：账号入口 ---------- */
 .layout__footer {
   padding: 8px 10px 12px;
-  border-top: 1px solid var(--st-border-color-hair);
+  border-top: 1px solid var(--st-nav-divider);
 }
 
 .layout__account {
@@ -559,15 +564,18 @@ watch(
   border: 0;
   border-radius: var(--st-radius-sm);
   background: transparent;
-  color: var(--st-text-primary);
+  color: var(--st-nav-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--st-duration-base) var(--st-ease);
+  transition:
+    background-color var(--st-duration-base) var(--st-ease),
+    color var(--st-duration-base) var(--st-ease);
 }
 
 .layout__account:hover {
-  background: var(--st-primary-lighter);
+  color: var(--st-nav-text-active);
+  background: var(--st-nav-hover-bg);
 }
 
 .layout__account-name {
@@ -580,7 +588,8 @@ watch(
 }
 
 .layout__account-caret {
-  color: var(--st-text-placeholder);
+  color: var(--st-nav-text);
+  opacity: 0.7;
 }
 
 /* 折叠成窄条时只留头像，居中放 */

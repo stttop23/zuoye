@@ -232,7 +232,10 @@ onBeforeUnmount(() => {
 .ai-fab :deep(.el-button) {
   width: 52px;
   height: 52px;
-  box-shadow: 0 6px 18px rgba(64, 158, 255, 0.35);
+  /* 和面板里那个圆形发送按钮用同一套渐变，一眼能认出「这俩是一回事」 */
+  color: #fff;
+  background: var(--grad-blue);
+  box-shadow: 0 6px 18px rgb(66 108 179 / 35%);
   transition:
     transform var(--st-duration-base) var(--st-ease-back),
     box-shadow var(--st-duration-base) var(--st-ease);
@@ -240,8 +243,10 @@ onBeforeUnmount(() => {
 
 /* 悬停时放大 + 阴影拉深，让它看起来「能点」 */
 .ai-fab :deep(.el-button:hover) {
+  color: #fff;
+  background: var(--grad-blue);
   transform: scale(1.1);
-  box-shadow: 0 10px 26px rgba(64, 158, 255, 0.45);
+  box-shadow: 0 10px 26px rgb(66 108 179 / 45%);
 }
 
 .ai-fab :deep(.el-button:active) {
@@ -259,12 +264,12 @@ onBeforeUnmount(() => {
 @keyframes ai-fab-breathe {
   0%,
   100% {
-    box-shadow: 0 6px 18px rgba(64, 158, 255, 0.3);
+    box-shadow: 0 6px 18px rgb(66 108 179 / 30%);
   }
   50% {
     box-shadow:
-      0 6px 18px rgba(64, 158, 255, 0.3),
-      0 0 0 10px rgba(64, 158, 255, 0.08);
+      0 6px 18px rgb(66 108 179 / 30%),
+      0 0 0 10px rgb(66 108 179 / 8%);
   }
 }
 

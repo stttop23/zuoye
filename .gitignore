@@ -38,6 +38,11 @@ coverage/
 
 # --- 密钥（永远不提交）---
 .env
+
+# --- 提交信息临时文件 ---
+# PowerShell 没有 heredoc，只能先写文件再 git commit -F。
+# 不忽略的话，git add -A 会把它一起提交上去（踩过一次）。
+.commit-msg.tmp
 .env.*
 !.env.example
 

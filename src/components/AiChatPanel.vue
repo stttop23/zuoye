@@ -64,8 +64,19 @@
           </el-tooltip>
           <el-button link @click="resetAgent">清空</el-button>
         </div>
-        <el-button type="primary" size="small" :loading="agentSending" @click="submit">
-          发送
+        <!--
+          圆形的渐变发送按钮。
+          留 aria-label 是因为按钮里现在只有一个图形、没文字，
+          屏幕阅读器（和自动化测试）得靠它才知道这按钮是干什么的。
+        -->
+        <el-button
+          circle
+          class="ai-chat__send"
+          :loading="agentSending"
+          aria-label="发送"
+          @click="submit"
+        >
+          <el-icon v-if="!agentSending" :size="16"><Promotion /></el-icon>
         </el-button>
       </div>
     </div>
@@ -87,7 +98,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Microphone } from '@element-plus/icons-vue'
+import { Microphone, Promotion } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
 import { useSpeechInput } from '@/composables/useSpeechInput'
 import { agentMessages, agentSending, resetAgent, sendAgentMessage } from '@/composables/aiAgent'
@@ -225,6 +236,44 @@ function useSuggestion(content) {
   margin-top: 4px;
   color: var(--st-text-placeholder);
   font-size: 11px;
+}
+
+/*
+ * 发送按钮：圆形 + 那套 135° 蓝渐变。
+ * 气泡【不】用渐变 —— 一屏几十条消息，每条都带渐变会非常吵。
+ * 整个聊天面板就这一个地方是亮的，视线会被它拉住。
+ */
+.ai-chat__send {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: #fff;
+  background: var(--grad-blue);
+  border: none;
+  box-shadow: var(--st-shadow-grad);
+  transition:
+    transform var(--st-duration-base) var(--st-ease),
+    filter var(--st-duration-base) var(--st-ease);
+}
+
+.ai-chat__send:hover,
+.ai-chat__send:focus {
+  color: #fff;
+  background: var(--grad-blue);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.ai-chat__send:active {
+  transform: translateY(0);
+}
+
+/*
+ * Element Plus 在 loading 时会盖一层接近白色的遮罩（--el-mask-color-extra-light），
+ * 白底 + 白转圈图标 = 什么都看不见。改成半透明，让渐变底色透出来。
+ */
+.ai-chat__send.is-loading::before {
+  background-color: rgb(255 255 255 / 30%);
 }
 
 /* ---------- 快捷短语 ---------- */

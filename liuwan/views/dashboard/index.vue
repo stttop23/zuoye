@@ -1,19 +1,24 @@
 <template>
   <div class="dashboard">
-    <!-- ==================== 欢迎条 ==================== -->
+    <!-- ==================== 欢迎卡（全页唯一一张用渐变的卡） ==================== -->
     <el-card shadow="never" class="welcome st-fade-up">
       <div class="welcome__inner">
-        <el-avatar :size="56" class="welcome__avatar">{{ userInitial }}</el-avatar>
-        <div>
-          <h2 class="welcome__title">欢迎来到工作台，{{ userName }}</h2>
-          <p class="welcome__desc">{{ todayText }}</p>
+        <div class="welcome__left">
+          <el-avatar :size="56" class="welcome__avatar">{{ userInitial }}</el-avatar>
+          <div>
+            <h2 class="welcome__title">欢迎来到工作台，{{ userName }}</h2>
+            <p class="welcome__desc">{{ todayText }}</p>
+          </div>
         </div>
+        <!--
+          打卡也放进这张卡：它是工作台上唯一的「动作」，
+          而且卡片本来就空着一大块右侧。单独开一张卡反而显得散。
+        -->
+        <CheckIn />
       </div>
     </el-card>
 
     <!-- 下面几块挨个淡入上移，带一点节奏（.st-delay-N 在 global.css 里） -->
-    <CheckIn class="st-fade-up st-delay-1" />
-
     <StatCards :stats="stats" />
 
     <QuickActions class="st-fade-up st-delay-3" @navigate="onNavigate" @refresh="onRefresh" />
@@ -57,34 +62,10 @@ const { userName, userInitial } = useUserProfile()
 const summary = computed(() => dashboardSummary())
 
 const stats = computed(() => [
-  {
-    label: '待办事项',
-    value: summary.value.todo,
-    icon: List,
-    color: 'var(--st-primary)',
-    bg: 'var(--st-primary-light)',
-  },
-  {
-    label: '请假申请',
-    value: summary.value.leave,
-    icon: Document,
-    color: 'var(--st-warning)',
-    bg: '#fdf6ec',
-  },
-  {
-    label: '公告数量',
-    value: summary.value.notice,
-    icon: Warning,
-    color: 'var(--st-danger)',
-    bg: '#fef0f0',
-  },
-  {
-    label: '小组成员',
-    value: summary.value.member,
-    icon: User,
-    color: 'var(--st-success)',
-    bg: '#f0f9eb',
-  },
+  { label: '待办事项', value: summary.value.todo, icon: List },
+  { label: '请假申请', value: summary.value.leave, icon: Document },
+  { label: '公告数量', value: summary.value.notice, icon: Warning },
+  { label: '小组成员', value: summary.value.member, icon: User },
 ])
 
 /**
@@ -126,49 +107,35 @@ function onRefresh() {
   gap: var(--st-gap-base);
 }
 
-/* ---------- 欢迎条：做成一块主视觉，不要一片死白 ---------- */
+/* ---------- 顶部欢迎卡：全页唯一一张铺渐变的卡 ----------
+ * 规矩就一条：**渐变只当点缀**。
+ *   这一张卡是“主视觉”，整块铺；其他卡片一律纯白 + 一条渐变顶边。
+ *   如果把渐变铺满整页，人眼没有休息的地方，再好的色也会显土。
+ * 【取消了】原来的两个白色装饰圆 —— 大块半透明圆属于“大光斑”，和克制相反。
+ */
 .welcome {
   position: relative;
   overflow: hidden;
-  border: none;
   color: #fff;
-  background: linear-gradient(120deg, #2b7cd3 0%, #409eff 48%, #66b1ff 100%);
-  box-shadow: 0 12px 32px rgba(64, 158, 255, 0.28);
-}
-
-/* 两个半透明装饰圆：直线条里掺点弧线，整块就不呆
-   ⚠️ ::before / ::after 会盖在内容上（绝对定位的元素在普通内容之上），
-      所以下面 .welcome__inner 要给 z-index 提上来 */
-.welcome::before,
-.welcome::after {
-  content: '';
-  position: absolute;
-  background: rgba(255, 255, 255, 0.09);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.welcome::before {
-  top: -90px;
-  right: 60px;
-  width: 240px;
-  height: 240px;
-}
-
-.welcome::after {
-  right: -60px;
-  bottom: -110px;
-  width: 200px;
-  height: 200px;
-  background: rgba(255, 255, 255, 0.13);
+  background: var(--grad-blue);
+  border: none;
+  border-radius: var(--st-radius-card);
+  box-shadow: var(--st-shadow-grad);
 }
 
 .welcome__inner {
-  position: relative;
-  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--st-gap-base);
+}
+
+.welcome__left {
   display: flex;
   align-items: center;
   gap: var(--st-gap-base);
+  min-width: 0;
 }
 
 .welcome__avatar {
@@ -176,9 +143,13 @@ function onRefresh() {
   font-size: 20px;
   font-weight: 600;
   color: #fff;
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(4px);
+  /* 一点点径向渐变：头像不是一块死白，有通透感（这是唯一允许用径向的地方） */
+  background: radial-gradient(
+    circle at 32% 28%,
+    rgb(255 255 255 / 50%) 0%,
+    rgb(255 255 255 / 16%) 72%
+  );
+  border: 1px solid rgb(255 255 255 / 45%);
   transition: transform var(--st-duration-base) var(--st-ease-back);
 }
 
@@ -189,14 +160,15 @@ function onRefresh() {
 .welcome__title {
   margin: 0;
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
   color: #fff;
 }
 
+/* 日期压灰一点：次要信息不该和大标题抢视力 */
 .welcome__desc {
   margin: 6px 0 0;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgb(255 255 255 / 72%);
 }
 
 /* 数据卡片、区块的样式已随子组件移走，见 ./components/ */

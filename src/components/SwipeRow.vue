@@ -6,7 +6,12 @@
       大屏：直接排到行右边（就是 is-static 那个模式），不需要滑。
       @click="收起" 是等按钮自己的处理跑完之后冒泡上来，点完任何一个都收回这一行。
     -->
-    <div class="swipe-row__actions" :class="{ 'is-inline': disabled }" @focusin="打开" @click="收起">
+    <div
+      class="swipe-row__actions"
+      :class="{ 'is-inline': disabled }"
+      @focusin="打开"
+      @click="收起"
+    >
       <slot name="actions" />
     </div>
 

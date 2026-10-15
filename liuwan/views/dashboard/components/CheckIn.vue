@@ -1,29 +1,26 @@
 <template>
-  <el-card shadow="never" class="check-in">
-    <div class="check-in__row">
-      <div class="check-in__icon" :class="{ 'check-in__icon--done': done }">
-        <el-icon :size="24"><component :is="done ? CircleCheckFilled : Clock" /></el-icon>
-      </div>
+  <!-- 这个块嵌在首页那张渐变欢迎卡里，所以自己不再是卡片、背景透明 -->
+  <div class="check-in">
+    <div class="check-in__status">
+      <el-icon class="check-in__icon" :class="{ 'check-in__icon--done': done }" :size="18">
+        <component :is="done ? CircleCheckFilled : Clock" />
+      </el-icon>
 
       <div class="check-in__text">
         <div class="check-in__title">{{ done ? `已打卡 ${lastTime}` : '今日未打卡' }}</div>
-        <div class="check-in__sub">
-          <span>{{ todayText }}</span>
-          <span v-if="placeText">{{ placeText }}</span>
-        </div>
+        <!-- 日期在卡片左边已经显示了，这里不重复；只留地点 -->
+        <div v-if="placeText" class="check-in__place" :title="placeText">{{ placeText }}</div>
       </div>
 
-      <el-tag v-if="streak > 0" type="warning" effect="plain" size="small">
-        连续 {{ streak }} 天
-      </el-tag>
-
-      <!-- 撤销是给演示用的：答辩时讲完可以点掉，重新演一遍 -->
-      <el-button v-if="done" link @click="undo">撤销</el-button>
-      <el-button v-else type="primary" :loading="locating" @click="doCheckIn">
-        {{ locating ? '定位中…' : '打卡' }}
-      </el-button>
+      <span v-if="streak > 0" class="check-in__streak">连续 {{ streak }} 天</span>
     </div>
-  </el-card>
+
+    <!-- 撤销是给演示用的：答辩时讲完可以点掉，重新演一遍 -->
+    <button v-if="done" type="button" class="check-in__undo" @click="undo">撤销</button>
+    <button v-else type="button" class="check-in__btn" :disabled="locating" @click="doCheckIn">
+      <span class="check-in__btn-text">{{ locating ? '定位中…' : '打卡' }}</span>
+    </button>
+  </div>
 </template>
 
 <script setup>
@@ -74,19 +71,9 @@ const done = computed(() => state.value.lastDate === today)
 const lastTime = computed(() => state.value.lastTime)
 const streak = computed(() => state.value.streak)
 
-const todayText = computed(() =>
-  new Date().toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-  }),
-)
-
 /**
- * 副标题里那一行地点。
- * 日期单独一行、地点单独一行 —— 拼成一句「日期 · 地名」时，
- * 长地名会从中间断开（实测「滁州学院会峰校区学 / 生公寓」），很难看。
+ * 打卡块里那一行地点。
+ * 日期不用在这里显示 —— 左边大标题下面已经有了，重复一遍是噪音。
  */
 const placeText = computed(() => {
   const place = state.value.place
@@ -213,25 +200,22 @@ watch(
 </script>
 
 <style scoped>
+/*
+ * 打卡块：嵌在首页那张渐变欢迎卡里，所以自己【不是卡片】、背景透明。
+ * （白卡片套在渐变卡里会割裂，一块深一块浅很难看。）
+ */
 .check-in {
-  border: 1px solid var(--st-border-color-hair);
-  box-shadow: var(--st-shadow-card);
-  transition:
-    transform var(--st-duration-base) var(--st-ease),
-    box-shadow var(--st-duration-base) var(--st-ease),
-    border-color var(--st-duration-base) var(--st-ease);
-}
-
-.check-in:hover {
-  transform: translateY(-2px);
-  border-color: var(--st-primary-glow);
-  box-shadow: var(--st-shadow-hover);
-}
-
-.check-in__row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--st-gap-base);
+}
+
+.check-in__status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .check-in__icon {
@@ -239,45 +223,115 @@ watch(
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--st-radius-base);
-  color: var(--st-primary);
-  background: var(--st-primary-light);
-  transition:
-    background-color var(--st-duration-base) var(--st-ease),
-    color var(--st-duration-base) var(--st-ease);
+  width: 34px;
+  height: 34px;
+  color: #fff;
+  background: rgb(255 255 255 / 16%);
+  border-radius: var(--st-radius-pill);
+  transition: background-color var(--st-duration-base) var(--st-ease);
 }
 
 /*
- * 打卡成功：图标弹一下。
- * 动画由「加上这个 class」触发，所以是打完卡才会弹，不是进页面就弹。
+ * 打卡成功：图标弹一下，并翻成「白色底 + 绿勾」。
+ * 动画由「加上这个 class」触发，所以是打完卡才弹，不是进页面就弹。
  * （st-pop 定义在 global.css 里）
  */
 .check-in__icon--done {
-  color: #fff;
-  background: linear-gradient(135deg, #7ed06a 0%, #52b23a 100%);
-  box-shadow: 0 6px 16px rgba(103, 194, 58, 0.28);
+  color: var(--st-success);
+  background: rgb(255 255 255 / 92%);
   animation: st-pop var(--st-duration-base) var(--st-ease-back) both;
 }
 
 .check-in__text {
-  flex: 1;
   min-width: 0;
 }
 
 .check-in__title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--st-text-primary);
+  color: #fff;
 }
 
-/* 日期一行、地点一行。地名可能很长，竖着排比挤在一行里从中间断开好读 */
-.check-in__sub {
-  display: flex;
-  flex-direction: column;
-  margin-top: 4px;
+/* 地名单独一行（长地名不靠自动换行从中间断开）+ 压白一点 */
+.check-in__place {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgb(255 255 255 / 72%);
+}
+
+.check-in__streak {
+  padding: 1px 8px;
+  font-size: 11px;
+  color: #fff;
+  white-space: nowrap;
+  background: rgb(255 255 255 / 18%);
+  border-radius: var(--st-radius-pill);
+}
+
+/*
+ * ---------- 打卡按钮：反渐变（白底 + 渐变文字） ----------
+ * 渐变卡上再放一个渐变按钮，两层渐变会打架，按钮的边界就不清楚了。
+ * 所以反过来：白底、文字用渐变 —— 一眼能看出这儿可点。
+ * hover 时再填回渐变色、文字变白，形成一次「反过来」的反馈。
+ */
+.check-in__btn {
+  padding: 7px 20px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  background: #fff;
+  border: none;
+  border-radius: var(--st-radius-pill);
+  box-shadow: 0 2px 8px rgb(20 40 80 / 16%);
+  transition:
+    transform var(--st-duration-base) var(--st-ease),
+    box-shadow var(--st-duration-base) var(--st-ease),
+    background-color var(--st-duration-base) var(--st-ease);
+}
+
+.check-in__btn-text {
+  font-weight: 600;
+  color: transparent;
+  background: var(--grad-blue);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.check-in__btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--st-shadow-grad);
+}
+
+.check-in__btn:hover:not(:disabled) .check-in__btn-text {
+  color: #fff;
+  background: none;
+  -webkit-text-fill-color: #fff;
+}
+
+.check-in__btn:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+/* 撤销：低调一点，不和主按钮抢视线 */
+.check-in__undo {
+  padding: 6px 14px;
+  font: inherit;
   font-size: 13px;
-  color: var(--st-text-secondary);
+  color: rgb(255 255 255 / 85%);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid rgb(255 255 255 / 35%);
+  border-radius: var(--st-radius-pill);
+  transition:
+    color var(--st-duration-base) var(--st-ease),
+    background-color var(--st-duration-base) var(--st-ease);
+}
+
+.check-in__undo:hover {
+  color: #fff;
+  background: rgb(255 255 255 / 14%);
 }
 </style>

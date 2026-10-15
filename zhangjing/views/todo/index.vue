@@ -893,7 +893,8 @@ async function deleteTodo(todo) {
 }
 
 .swipe-btn--edit {
-  background: linear-gradient(135deg, #6fb4f5 0%, #2b7cd3 100%);
+  /* 跟全站统一成那套 135° 蓝渐变（原来是另一个色号的蓝） */
+  background: var(--grad-blue);
 }
 
 .swipe-btn--delete {

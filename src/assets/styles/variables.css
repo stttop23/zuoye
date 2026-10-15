@@ -8,12 +8,12 @@
  * ============================================================
  */
 :root {
-  /* ---------- 品牌色 ---------- */
-  --st-primary: #409eff; /* 主色调，等同于 Element Plus 默认蓝 */
-  --st-primary-dark: #2b7cd3; /* hover / 渐变深的那一头 */
-  --st-primary-light: #ecf5ff;
-  --st-primary-lighter: #f5faff;
-  --st-primary-glow: rgba(64, 158, 255, 0.22); /* 光晕，给焦点环和悬浮用 */
+  /* ---------- 品牌色（低饱和雾蓝，不用刺眼的高饱和亮蓝） ---------- */
+  --st-primary: #4270b8; /* 主色调（配 --grad-blue 的起点，全站统一） */
+  --st-primary-dark: #355a93; /* hover / 渐变深的那一头 */
+  --st-primary-light: #ecf1f8;
+  --st-primary-lighter: #f6f9fc;
+  --st-primary-glow: rgba(66, 112, 184, 0.22); /* 光晕，给焦点环和悬浮用 */
   --st-success: #67c23a;
   --st-success-light: #f0f9eb;
   --st-warning: #e6a23c;
@@ -22,11 +22,36 @@
   --st-danger-light: #fef0f0;
   --st-info: #909399;
 
-  /* ---------- 渐变（设计感主要靠这个） ---------- */
-  --st-gradient-brand: linear-gradient(135deg, #5aa9ff 0%, #2b7cd3 100%);
-  --st-gradient-logo: linear-gradient(135deg, #66b1ff 0%, #3a8ee6 60%, #2b7cd3 100%);
-  --st-gradient-welcome: linear-gradient(120deg, #e8f3ff 0%, #f7fbff 45%, #ffffff 100%);
-  --st-gradient-sidebar: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  /* ---------- 深色侧边栏 ----------
+   * 底色是深海军蓝，菜单项文字/悬停/选中都从这几个变量取，
+   * 别在页面里各写一遍 rgba（改起来要全找一遍）。
+   */
+  --st-nav-bg: #1a2a42;
+  --st-nav-text: rgba(255, 255, 255, 0.72);
+  --st-nav-text-active: #ffffff;
+  --st-nav-hover-bg: rgba(255, 255, 255, 0.07);
+  --st-nav-active-bg: rgba(255, 255, 255, 0.1);
+  --st-nav-divider: rgba(255, 255, 255, 0.08);
+
+  /* ---------- 渐变 ----------
+   * 三条规矩（写下来才不会乱）：
+   *   1. 角度统一 135°，全站一个方向
+   *   2. 只用单色系同色调，禁止彩虹 / 大光斑径向渐变
+   *   3. 只做点缀（顶边、图标、按钮、选中条），不要大面积铺满
+   * 大面积铺渐变会脏、会土，克制才有质感。
+   */
+  --grad-blue: linear-gradient(135deg, #4270b8 0%, #6897d8 100%);
+  --grad-blue-soft: linear-gradient(
+    135deg,
+    rgba(66, 112, 184, 0.12) 0%,
+    rgba(104, 151, 216, 0.12) 100%
+  );
+  /* 兼容旧名字（global.css / BasicLayout 在用），指向同一个渐变 */
+  --st-gradient-brand: var(--grad-blue);
+  --st-gradient-logo: var(--grad-blue);
+  --st-gradient-hero: var(--grad-blue); /* 首页顶部那张卡 */
+  /* 侧边栏直接用变量表里的深色，不走渐变 */
+  --st-gradient-sidebar: var(--st-nav-bg);
   --st-gradient-topbar: linear-gradient(
     90deg,
     rgba(236, 245, 255, 0.9) 0%,
@@ -50,6 +75,7 @@
 
   /* ---------- 圆角（比原来大一点，观感更现代） ---------- */
   --st-radius-sm: 6px;
+  --st-radius-card: 12px; /* 卡片统一用这个（渐变卡 / 统计卡 / 区块卡） */
   --st-radius-base: 10px;
   --st-radius-lg: 16px;
   --st-radius-pill: 999px;
@@ -66,6 +92,10 @@
   --st-shadow-hover: 0 4px 10px rgba(16, 42, 82, 0.07), 0 12px 28px rgba(16, 42, 82, 0.1);
   --st-shadow-float: 0 8px 24px rgba(16, 42, 82, 0.1), 0 20px 48px rgba(16, 42, 82, 0.12);
   --st-shadow-glow: 0 0 0 4px var(--st-primary-glow);
+  /* 带品牌色的阴影：用在渐变元素下面，比中性灰更“融进去” */
+  --st-shadow-grad: 0 4px 16px rgba(66, 108, 179, 0.12);
+  /* 卡片默认那层：比 --st-shadow-card 稍重一点点，白卡在浅灰底上更立得住 */
+  --st-shadow-soft: 0 4px 16px rgba(26, 42, 66, 0.07);
 
   /* ---------- 动效：统一节奏，别每个地方各写一个 0.3s ---------- */
   --st-duration-fast: 0.15s;
@@ -80,4 +110,18 @@
   --st-header-height: 60px;
   --st-sidebar-width: 220px;
   --st-sidebar-width-collapsed: 64px;
+
+  /* ---------- Element Plus 自己的主色变量 ----------
+   * 设了这几个，组件库的按钮/链接/标签/开关会自动跟我们的主色走，
+   * 否则会出现“我们的蓝”和“EP 的蓝”两套蓝在一起打架。
+   * ⚠️ 必须写在 element-plus/dist/index.css 之后才生效 —— 见 main.js 的引入顺序。
+   * 各个 light-N 是按主色混白算出来的（不是手调的）。
+   */
+  --el-color-primary: var(--st-primary);
+  --el-color-primary-light-3: #7b9bcd;
+  --el-color-primary-light-5: #a1b7db;
+  --el-color-primary-light-7: #c6d4ea;
+  --el-color-primary-light-8: #d9e2f1;
+  --el-color-primary-light-9: #ecf1f8;
+  --el-color-primary-dark-2: #355a93;
 }
