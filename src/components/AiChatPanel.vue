@@ -239,18 +239,19 @@ function useSuggestion(content) {
 }
 
 /*
- * 发送按钮：圆形 + 那套 135° 蓝渐变。
- * 气泡【不】用渐变 —— 一屏几十条消息，每条都带渐变会非常吵。
- * 整个聊天面板就这一个地方是亮的，视线会被它拉住。
+ * 发送按钮：圆形 + 整条彩虹（青→紫→粉）。
+ * AI 不属于任何单个模块，所以它用【全部】色相 —— 而气泡【不】用渐变，
+ * 一屏几十条消息、每条都带渐变会非常吵。
+ * 整个面板就这一个地方是彩色的，视线自然被它拉住。
  */
 .ai-chat__send {
   width: 36px;
   height: 36px;
   padding: 0;
   color: #fff;
-  background: var(--grad-blue);
+  background: var(--grad-rainbow);
   border: none;
-  box-shadow: var(--st-shadow-grad);
+  box-shadow: 0 4px 14px rgb(131 113 194 / 32%);
   transition:
     transform var(--st-duration-base) var(--st-ease),
     filter var(--st-duration-base) var(--st-ease);
@@ -259,7 +260,7 @@ function useSuggestion(content) {
 .ai-chat__send:hover,
 .ai-chat__send:focus {
   color: #fff;
-  background: var(--grad-blue);
+  background: var(--grad-rainbow);
   filter: brightness(1.08);
   transform: translateY(-1px);
 }

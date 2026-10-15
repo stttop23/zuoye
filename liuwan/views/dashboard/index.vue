@@ -62,10 +62,15 @@ const { userName, userInitial } = useUserProfile()
 const summary = computed(() => dashboardSummary())
 
 const stats = computed(() => [
-  { label: '待办事项', value: summary.value.todo, icon: List },
-  { label: '请假申请', value: summary.value.leave, icon: Document },
-  { label: '公告数量', value: summary.value.notice, icon: Warning },
-  { label: '小组成员', value: summary.value.member, icon: User },
+  /*
+   * tone = 卡片色相。四张卡从左到右扫过彩虹（青→蓝紫→紫→粉），
+   * 这只是为了好看；它【不】跟模块色绑定 ——
+   * 卡片排在同一行，按模块配会变成三张紫的挤在一起。
+   */
+  { label: '待办事项', value: summary.value.todo, icon: List, tone: 'teal' },
+  { label: '请假申请', value: summary.value.leave, icon: Document, tone: 'indigo' },
+  { label: '公告数量', value: summary.value.notice, icon: Warning, tone: 'violet' },
+  { label: '小组成员', value: summary.value.member, icon: User, tone: 'pink' },
 ])
 
 /**
@@ -111,16 +116,19 @@ function onRefresh() {
  * 规矩就一条：**渐变只当点缀**。
  *   这一张卡是“主视觉”，整块铺；其他卡片一律纯白 + 一条渐变顶边。
  *   如果把渐变铺满整页，人眼没有休息的地方，再好的色也会显土。
+ *
+ * 【重要】底色是浅色彩虹 → 所以文字【必须是深灰】，不能用白字。
+ *   浅底配白字会糊成一片（白字只在上一版那种深蓝底上才行）。
  * 【取消了】原来的两个白色装饰圆 —— 大块半透明圆属于“大光斑”，和克制相反。
  */
 .welcome {
   position: relative;
   overflow: hidden;
-  color: #fff;
-  background: var(--grad-blue);
+  color: var(--st-text-primary);
+  background: var(--st-gradient-hero); /* = 浅彩虹 青→紫→粉 */
   border: none;
   border-radius: var(--st-radius-card);
-  box-shadow: var(--st-shadow-grad);
+  box-shadow: var(--st-shadow-rainbow);
 }
 
 .welcome__inner {
@@ -138,18 +146,16 @@ function onRefresh() {
   min-width: 0;
 }
 
+/* 头像反过来用【深档】彩虹：浅底上放浅色头像就看不见了。
+   白字是撑得住这个深度的（大号粗体，对比度够）。 */
 .welcome__avatar {
   flex-shrink: 0;
   font-size: 20px;
   font-weight: 600;
   color: #fff;
-  /* 一点点径向渐变：头像不是一块死白，有通透感（这是唯一允许用径向的地方） */
-  background: radial-gradient(
-    circle at 32% 28%,
-    rgb(255 255 255 / 50%) 0%,
-    rgb(255 255 255 / 16%) 72%
-  );
-  border: 1px solid rgb(255 255 255 / 45%);
+  background: var(--grad-rainbow);
+  border: 2px solid rgb(255 255 255 / 72%);
+  box-shadow: 0 4px 12px rgb(131 113 194 / 26%);
   transition: transform var(--st-duration-base) var(--st-ease-back);
 }
 
@@ -161,14 +167,14 @@ function onRefresh() {
   margin: 0;
   font-size: 20px;
   font-weight: 700;
-  color: #fff;
+  color: var(--st-text-primary);
 }
 
 /* 日期压灰一点：次要信息不该和大标题抢视力 */
 .welcome__desc {
   margin: 6px 0 0;
   font-size: 13px;
-  color: rgb(255 255 255 / 72%);
+  color: rgb(48 49 51 / 62%);
 }
 
 /* 数据卡片、区块的样式已随子组件移走，见 ./components/ */

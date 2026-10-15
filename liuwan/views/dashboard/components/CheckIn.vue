@@ -18,7 +18,7 @@
     <!-- 撤销是给演示用的：答辩时讲完可以点掉，重新演一遍 -->
     <button v-if="done" type="button" class="check-in__undo" @click="undo">撤销</button>
     <button v-else type="button" class="check-in__btn" :disabled="locating" @click="doCheckIn">
-      <span class="check-in__btn-text">{{ locating ? '定位中…' : '打卡' }}</span>
+      {{ locating ? '定位中…' : '打卡' }}
     </button>
   </div>
 </template>
@@ -201,8 +201,11 @@ watch(
 
 <style scoped>
 /*
- * 打卡块：嵌在首页那张渐变欢迎卡里，所以自己【不是卡片】、背景透明。
- * （白卡片套在渐变卡里会割裂，一块深一块浅很难看。）
+ * 打卡块：嵌在首页那张【浅彩虹】欢迎卡里，所以自己【不是卡片】、背景透明。
+ *
+ * ⚠️ 上一版底色是深蓝，所以这里是白字 + 「白底渐变字」的反渐变按钮。
+ *    改成浅彩虹后，白字会糊、白底按钮会看不见 —— 一律改成【深灰字】，
+ *    按钮也换成【实底】。浅底 + 白字是行不通的，别再改回去。
  */
 .check-in {
   display: flex;
@@ -218,6 +221,7 @@ watch(
   min-width: 0;
 }
 
+/* 图标用【本模块的深色】当底：浅底上必须有这么一块实色，不然整个块没重心 */
 .check-in__icon {
   display: flex;
   align-items: center;
@@ -226,19 +230,19 @@ watch(
   width: 34px;
   height: 34px;
   color: #fff;
-  background: rgb(255 255 255 / 16%);
+  background: var(--module-ink, var(--st-primary));
   border-radius: var(--st-radius-pill);
   transition: background-color var(--st-duration-base) var(--st-ease);
 }
 
 /*
- * 打卡成功：图标弹一下，并翻成「白色底 + 绿勾」。
- * 动画由「加上这个 class」触发，所以是打完卡才弹，不是进页面就弹。
+ * 打卡成功：图标弹一下，并翻成「白底 + 绿勾」。
+ * 动画由「加上这个 class」触发，所以是打完卡才会弹，不是进页面就弹。
  * （st-pop 定义在 global.css 里）
  */
 .check-in__icon--done {
   color: var(--st-success);
-  background: rgb(255 255 255 / 92%);
+  background: #fff;
   animation: st-pop var(--st-duration-base) var(--st-ease-back) both;
 }
 
@@ -249,70 +253,56 @@ watch(
 .check-in__title {
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
+  color: var(--st-text-primary);
 }
 
-/* 地名单独一行（长地名不靠自动换行从中间断开）+ 压白一点 */
 .check-in__place {
   margin-top: 2px;
   font-size: 12px;
   line-height: 1.4;
-  color: rgb(255 255 255 / 72%);
+  color: var(--st-text-secondary);
 }
 
 .check-in__streak {
   padding: 1px 8px;
   font-size: 11px;
-  color: #fff;
+  color: var(--st-text-regular);
   white-space: nowrap;
-  background: rgb(255 255 255 / 18%);
+  background: rgb(255 255 255 / 62%);
   border-radius: var(--st-radius-pill);
 }
 
 /*
- * ---------- 打卡按钮：反渐变（白底 + 渐变文字） ----------
- * 渐变卡上再放一个渐变按钮，两层渐变会打架，按钮的边界就不清楚了。
- * 所以反过来：白底、文字用渐变 —— 一眼能看出这儿可点。
- * hover 时再填回渐变色、文字变白，形成一次「反过来」的反馈。
+ * ---------- 打卡按钮：实底模块色 ----------
+ * 浅底上的主按钮就必须“实”，靠颜色深浅拉开层次；
+ * 用白底/浅底都会和背景糊在一起，看不出哪儿能点。
  */
 .check-in__btn {
   padding: 7px 20px;
   font: inherit;
   font-size: 14px;
+  font-weight: 600;
+  color: #fff;
   cursor: pointer;
-  background: #fff;
+  background: var(--module-grad, var(--grad-blue));
   border: none;
   border-radius: var(--st-radius-pill);
-  box-shadow: 0 2px 8px rgb(20 40 80 / 16%);
+  box-shadow: 0 4px 12px rgb(79 157 148 / 30%);
   transition:
     transform var(--st-duration-base) var(--st-ease),
-    box-shadow var(--st-duration-base) var(--st-ease),
-    background-color var(--st-duration-base) var(--st-ease);
-}
-
-.check-in__btn-text {
-  font-weight: 600;
-  color: transparent;
-  background: var(--grad-blue);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+    filter var(--st-duration-base) var(--st-ease),
+    box-shadow var(--st-duration-base) var(--st-ease);
 }
 
 .check-in__btn:hover:not(:disabled) {
+  filter: brightness(1.06);
   transform: translateY(-1px);
-  box-shadow: var(--st-shadow-grad);
-}
-
-.check-in__btn:hover:not(:disabled) .check-in__btn-text {
-  color: #fff;
-  background: none;
-  -webkit-text-fill-color: #fff;
+  box-shadow: 0 6px 16px rgb(79 157 148 / 36%);
 }
 
 .check-in__btn:disabled {
   cursor: default;
-  opacity: 0.8;
+  opacity: 0.75;
 }
 
 /* 撤销：低调一点，不和主按钮抢视线 */
@@ -320,10 +310,10 @@ watch(
   padding: 6px 14px;
   font: inherit;
   font-size: 13px;
-  color: rgb(255 255 255 / 85%);
+  color: var(--st-text-regular);
   cursor: pointer;
-  background: transparent;
-  border: 1px solid rgb(255 255 255 / 35%);
+  background: rgb(255 255 255 / 62%);
+  border: 1px solid rgb(48 49 51 / 12%);
   border-radius: var(--st-radius-pill);
   transition:
     color var(--st-duration-base) var(--st-ease),
@@ -331,7 +321,7 @@ watch(
 }
 
 .check-in__undo:hover {
-  color: #fff;
-  background: rgb(255 255 255 / 14%);
+  color: var(--st-text-primary);
+  background: #fff;
 }
 </style>

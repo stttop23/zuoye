@@ -1,7 +1,11 @@
 <template>
   <el-row :gutter="16" class="stat-row">
     <el-col v-for="(item, index) in stats" :key="item.label" :xs="12" :sm="12" :md="6">
-      <el-card shadow="never" class="stat-card st-fade-up" :class="`st-delay-${index + 1}`">
+      <el-card
+        shadow="never"
+        class="stat-card st-fade-up"
+        :class="[`st-delay-${index + 1}`, `tone--${item.tone}`]"
+      >
         <div class="stat-card__inner">
           <div class="stat-card__icon">
             <el-icon :size="20"><component :is="item.icon" /></el-icon>
@@ -21,11 +25,11 @@
 <script setup>
 /**
  * 数据卡片：纯展示组件，数据由父级传入。
- * item 结构：{ label, value, icon }
+ * item 结构：{ label, value, icon, tone }
  *
- * 视觉规矩（整站统一，改的时候别破）：
- *   - 卡身【纯白】，不铺渐变 —— 渐变只在两个地方：顶部那条 4px 细条 + 图标底
- *   - 四张卡颜色【完全一致】，靠图标和数字区分；每张一个颜色就会像仪表盘
+ * tone = 卡片色相（浅色彩虹：青→蓝紫→紫→粉）。
+ *   卡身依然是【纯白】，只有两个地方上色：顶部那条 4px 细条 + 图标底。
+ *   四张卡颜色不一样才有“彩虹”，但只给这一小块，大面积白留白才不吵。
  *
  * 动效全在这里、不需要父级配合：
  *   - 数字从 0 滚上来（CountUp）
@@ -58,22 +62,39 @@ defineProps({
     border-color var(--st-duration-base) var(--st-ease);
 }
 
+/* 每张卡自己的渐变（模板里挂的 tone--xxx） */
+.stat-card.tone--teal {
+  --card-grad: var(--grad-teal);
+}
+
+.stat-card.tone--indigo {
+  --card-grad: var(--grad-indigo);
+}
+
+.stat-card.tone--violet {
+  --card-grad: var(--grad-violet);
+}
+
+.stat-card.tone--pink {
+  --card-grad: var(--grad-pink);
+}
+
 /*
  * 顶部一条通宽的渐变细条（4px）。
- * 整排四张卡因此像用同一道光“开”了一下 —— 比原来那种
- * 「每张卡一个颜色的小横条」干净得多，也不会视觉过载。
+ * 整排四张卡各一道不同颜色的光 —— 比原来那种「四张卡一个颜色」有精神，
+ * 但又只占 4px，不会把页面打成花脸。
  */
 .stat-card::before {
   content: '';
   position: absolute;
   inset: 0 0 auto 0;
   height: 4px;
-  background: var(--grad-blue);
+  background: var(--card-grad, var(--grad-blue));
 }
 
 .stat-card:hover {
   transform: translateY(-4px);
-  border-color: var(--st-primary-glow);
+  border-color: var(--card-grad, var(--st-primary-glow));
   box-shadow: var(--st-shadow-hover);
 }
 
@@ -93,7 +114,7 @@ defineProps({
  * 图标：「渐变底 + 白色图标」。
  * ⚠️ 想要「图标图形本身被渐变填充」，得用 SVG 的 mask 或给每个 SVG 加一个
  *    gradient defs —— 图标是 Element Plus 的组件、形状各不相同，做不通用。
- *    渐变底白图标在观感上等价，而且能跟着主色变量一起换。
+ *    渐变底白图标在观感上等价，而且能跟着色相变量一起换。
  */
 .stat-card__icon {
   display: flex;
@@ -103,7 +124,7 @@ defineProps({
   width: 44px;
   height: 44px;
   color: #fff;
-  background: var(--grad-blue);
+  background: var(--card-grad, var(--grad-blue));
   border-radius: var(--st-radius-base);
   box-shadow: var(--st-shadow-grad);
   transition: transform var(--st-duration-base) var(--st-ease-back);

@@ -26,7 +26,12 @@
         router
         class="layout__menu"
       >
-        <el-menu-item v-for="item in menus" :key="item.path" :index="item.path">
+        <el-menu-item
+          v-for="item in menus"
+          :key="item.path"
+          :index="item.path"
+          :class="`tone--${item.tone}`"
+        >
           <el-icon><component :is="item.icon" /></el-icon>
           <template #title>{{ item.title }}</template>
         </el-menu-item>
@@ -130,8 +135,10 @@
         </div>
       </el-header>
 
-      <!-- ==================== 内容区 ==================== -->
-      <el-main class="layout__main">
+      <!-- ==================== 内容区 ====================
+           module--xxx ：告诉页面「你是哪个模块」，页面里的小横条/小竖条
+           就自动变成这个模块的色相（变量定义在 global.css）。 -->
+      <el-main class="layout__main" :class="moduleClass">
         <!-- 切换页面时淡入淡出 + 轻微上移，比「啪」一下换掉有质感 -->
         <router-view v-slot="{ Component }">
           <transition name="page" mode="out-in">
@@ -310,13 +317,26 @@ const profileRules = {
 
 /** 菜单项：队友新增页面时，只需在这里加一行 */
 const menus = [
-  { path: '/assistant', title: 'AI 助手', icon: ChatDotRound },
-  { path: '/dashboard', title: '工作台', icon: HomeFilled },
-  { path: '/notice', title: '公告通知', icon: Bell },
-  { path: '/leave', title: '请假申请', icon: Document },
-  { path: '/todo', title: '待办事项', icon: List },
-  { path: '/contacts', title: '通讯录', icon: User },
+  /* tone = 这个菜单的色相（浅色彩虹：青→紫→粉）。
+     侧边栏是深色的，所以图标用 light 档、选中竖条用 deep 档渐变 ——
+     在 #1a2a42 上 soft 档基本看不见。 */
+  { path: '/assistant', title: 'AI 助手', icon: ChatDotRound, tone: 'rainbow' },
+  { path: '/dashboard', title: '工作台', icon: HomeFilled, tone: 'teal' },
+  { path: '/notice', title: '公告通知', icon: Bell, tone: 'indigo' },
+  { path: '/leave', title: '请假申请', icon: Document, tone: 'violet' },
+  { path: '/todo', title: '待办事项', icon: List, tone: 'orchid' },
+  { path: '/contacts', title: '通讯录', icon: User, tone: 'pink' },
 ]
+
+/*
+ * 内容区的模块色 class：global.css 里为每个色相定义了 --module-grad / ink / soft。
+ * 用路由 name 拼（Dashboard → module--dashboard），小写就行。
+ * 碰到没定义的（比如 404）只会挂一个空壳 class，使用处都有 fallback，不会白屏。
+ */
+const moduleClass = computed(() => {
+  const name = String(route.name ?? '').toLowerCase()
+  return name ? `module--${name}` : ''
+})
 
 /** 面包屑第二级标题，直接读路由 meta */
 const currentTitle = computed(() => route.meta?.title ?? '')
@@ -490,7 +510,7 @@ watch(
     transform var(--st-duration-base) var(--st-ease);
 }
 
-/* 左侧那根「长出来」的指示条 —— 用高度而非透明度，看着更利塔 */
+/* 左侧那根「长出来」的指示条 —— 用高度而非透明度，看着更利落 */
 .layout__menu :deep(.el-menu-item)::before {
   content: '';
   position: absolute;
@@ -498,11 +518,48 @@ watch(
   left: -8px;
   width: 3px;
   height: 0;
-  /* 选中条也用那套 135° 渐变 —— 和标题小横条、卡片顶边是同一道光 */
-  background: var(--grad-blue);
+  /* 选中条用【本菜单自己的色相】—— 六个菜单就是一段青→紫→粉的小彩虹 */
+  background: var(--menu-grad, var(--grad-blue));
   border-radius: var(--st-radius-pill);
   transform: translateY(-50%);
   transition: height var(--st-duration-base) var(--st-ease-back);
+}
+
+/*
+ * 每个菜单项自己的两个变量（模板里挂的 tone--xxx）：
+ *   --menu-grad  选中竖条的颜色（deep 档，深底上看得见）
+ *   --menu-tone  图标颜色（light 档，深底上更亮）
+ * 深色侧边栏上【不能】用 soft 或 deep 当图标色：
+ * soft 几乎和白底一样，直接“消失”。
+ */
+.layout__menu :deep(.el-menu-item.tone--teal) {
+  --menu-grad: var(--grad-teal);
+  --menu-tone: var(--tone-teal-light);
+}
+
+.layout__menu :deep(.el-menu-item.tone--indigo) {
+  --menu-grad: var(--grad-indigo);
+  --menu-tone: var(--tone-indigo-light);
+}
+
+.layout__menu :deep(.el-menu-item.tone--violet) {
+  --menu-grad: var(--grad-violet);
+  --menu-tone: var(--tone-violet-light);
+}
+
+.layout__menu :deep(.el-menu-item.tone--orchid) {
+  --menu-grad: var(--grad-orchid);
+  --menu-tone: var(--tone-orchid-light);
+}
+
+.layout__menu :deep(.el-menu-item.tone--pink) {
+  --menu-grad: var(--grad-pink);
+  --menu-tone: var(--tone-pink-light);
+}
+
+.layout__menu :deep(.el-menu-item.tone--rainbow) {
+  --menu-grad: var(--grad-rainbow);
+  --menu-tone: var(--tone-violet-light);
 }
 
 .layout__menu :deep(.el-menu-item.is-active)::before {
@@ -527,8 +584,12 @@ watch(
   background: var(--st-nav-active-bg);
 }
 
+/* 图标带本菜单的色相 —— 侧边栏一眼就是一小段彩虹 */
 .layout__menu :deep(.el-menu-item .el-icon) {
-  transition: transform var(--st-duration-base) var(--st-ease-back);
+  color: var(--menu-tone, currentcolor);
+  transition:
+    color var(--st-duration-base) var(--st-ease),
+    transform var(--st-duration-base) var(--st-ease-back);
 }
 
 .layout__menu :deep(.el-menu-item:hover .el-icon) {

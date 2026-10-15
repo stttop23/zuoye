@@ -34,11 +34,12 @@
   --st-nav-divider: rgba(255, 255, 255, 0.08);
 
   /* ---------- 渐变 ----------
-   * 三条规矩（写下来才不会乱）：
+   * 四条规矩（写下来才不会乱）：
    *   1. 角度统一 135°，全站一个方向
-   *   2. 只用单色系同色调，禁止彩虹 / 大光斑径向渐变
-   *   3. 只做点缀（顶边、图标、按钮、选中条），不要大面积铺满
-   * 大面积铺渐变会脏、会土，克制才有质感。
+   *   2. 【蓝色】是主色：按钮、选中、焦点环用它
+   *      （Element Plus 只认一个主色，只能留蓝）
+   *   3. 【浅色彩虹】负责装饰和「按模块分层」，见下面的色调表
+   *   4. 渐变不要整页铺满 —— 大面积铺渐变会脏、会土，克制才有质感
    */
   --grad-blue: linear-gradient(135deg, #4270b8 0%, #6897d8 100%);
   --grad-blue-soft: linear-gradient(
@@ -46,10 +47,63 @@
     rgba(66, 112, 184, 0.12) 0%,
     rgba(104, 151, 216, 0.12) 100%
   );
-  /* 兼容旧名字（global.css / BasicLayout 在用），指向同一个渐变 */
+
+  /* ---------- 浅色彩虹：青 → 紫 → 粉 ----------
+   * 每个色相三档，用途完全不同，别混着用：
+   *   soft   极浅，铺【大面积】（欢迎卡、卡片顶边）—— 上面压深灰字照样清楚
+   *   deep   中等，画在【浅底】上的小东西（图标、竖条、按钮底）
+   *   light  很亮，画在【深色侧边栏】上的小东西（深底上 soft/deep 都看不见）
+   *
+   * ⚠️ 只走「青→紫→粉」这段相邻色，不用红黄绿：
+   *    全光谱的浅色版会变成儿童糖果风，和这套 UI 不搭。
+   */
+  --tone-teal-soft: #c6e6e1;
+  --tone-teal-deep: #4f9d94;
+  --tone-teal-light: #86c9c1;
+  --tone-indigo-soft: #ccd8f2;
+  --tone-indigo-deep: #5f74bd;
+  --tone-indigo-light: #9cb0e0;
+  --tone-violet-soft: #d8cdf0;
+  --tone-violet-deep: #8371c2;
+  --tone-violet-light: #b6a8e2;
+  --tone-orchid-soft: #ecd3ea;
+  --tone-orchid-deep: #b274ad;
+  --tone-orchid-light: #d5a8d1;
+  --tone-pink-soft: #f5ced9;
+  --tone-pink-deep: #cb7891;
+  --tone-pink-light: #e6a3b7;
+
+  /* 第四档：几乎白的“一丝色”。给表格表头、卡片头这种
+   * 需要【能看出颜色但不能抢戏】的地方 —— soft 铺在那儿还是会重。
+   * ⚠️ 别再往下调淡：#f0f2f6 这个级别在屏幕上和灰白根本分不出来，等于没加。 */
+  --tone-teal-fade: #e6f3f1;
+  --tone-indigo-fade: #e8edf9;
+  --tone-violet-fade: #eeebfa;
+  --tone-orchid-fade: #f8eaf6;
+  --tone-pink-fade: #fcebf1;
+
+  /* 每个色相两条渐变：不带 soft 的给小元素（图标/竖条/按钮），
+   * 带 soft 的从有色晕到近白，是真正能看出「渐变」的那条。 */
+  --grad-teal: linear-gradient(135deg, #4f9d94 0%, #7fc0b7 100%);
+  --grad-teal-soft: linear-gradient(135deg, #c6e6e1 0%, #e9f6f4 100%);
+  --grad-indigo: linear-gradient(135deg, #5f74bd 0%, #8d9ed9 100%);
+  --grad-indigo-soft: linear-gradient(135deg, #ccd8f2 0%, #edf1fb 100%);
+  --grad-violet: linear-gradient(135deg, #8371c2 0%, #a795da 100%);
+  --grad-violet-soft: linear-gradient(135deg, #d8cdf0 0%, #f2eefb 100%);
+  --grad-orchid: linear-gradient(135deg, #b274ad 0%, #cd9ac9 100%);
+  --grad-orchid-soft: linear-gradient(135deg, #ecd3ea 0%, #f9f1f8 100%);
+  --grad-pink: linear-gradient(135deg, #cb7891 0%, #e09bb0 100%);
+  --grad-pink-soft: linear-gradient(135deg, #f5ced9 0%, #fdf0f4 100%);
+
+  /* 整条彩虹：给「不属于任何单个模块」的地方用 ——
+   * 左上角 logo 方块、AI 助手悬浮球和发送按钮（它是跨模块的助手）。 */
+  --grad-rainbow: linear-gradient(135deg, #4f9d94 0%, #8371c2 50%, #cb7891 100%);
+  --grad-rainbow-soft: linear-gradient(135deg, #c6e6e1 0%, #d8cdf0 50%, #f5ced9 100%);
+
+  /* 兼容旧名字（global.css / BasicLayout 在用） */
   --st-gradient-brand: var(--grad-blue);
-  --st-gradient-logo: var(--grad-blue);
-  --st-gradient-hero: var(--grad-blue); /* 首页顶部那张卡 */
+  --st-gradient-logo: var(--grad-rainbow); /* logo 方块 = 整条彩虹，当品牌标记 */
+  --st-gradient-hero: var(--grad-rainbow-soft); /* 首页顶部那张卡 */
   /* 侧边栏直接用变量表里的深色，不走渐变 */
   --st-gradient-sidebar: var(--st-nav-bg);
   --st-gradient-topbar: linear-gradient(
@@ -96,6 +150,8 @@
   --st-shadow-grad: 0 4px 16px rgba(66, 108, 179, 0.12);
   /* 卡片默认那层：比 --st-shadow-card 稍重一点点，白卡在浅灰底上更立得住 */
   --st-shadow-soft: 0 4px 16px rgba(26, 42, 66, 0.07);
+  /* 浅彩虹卡（欢迎卡）专用的彩影：用中性灰会显得“浮在白纸上” */
+  --st-shadow-rainbow: 0 6px 20px rgba(131, 113, 194, 0.14);
 
   /* ---------- 动效：统一节奏，别每个地方各写一个 0.3s ---------- */
   --st-duration-fast: 0.15s;

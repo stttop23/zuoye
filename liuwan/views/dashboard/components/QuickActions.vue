@@ -10,6 +10,7 @@
         :key="action.path"
         type="button"
         class="quick__item"
+        :class="`tone--${action.tone}`"
         @click="emit('navigate', action.path)"
       >
         <span class="quick__icon">
@@ -36,7 +37,8 @@
  * 改成「磁贴」：左边一块圆角图标 + 右边文字，点击热区大、手机上也好按
  * （原生 <button>，键盘 Tab 和回车照样能用）。
  *
- * 配色规矩：**平时是单色灰，hover 才点亮成渐变。**
+ * 配色规矩：**平时是单色灰，hover 才点亮成渐变**，而且用【目标模块的色相】——
+ * 点「查看公告」亮的是公告页的紫，等于提前告诉你去哪儿。
  * 一上来就四个颜色都很艳，视线会被四块抢光，反而不知道先看哪。
  */
 import { Bell, Document, List, Refresh } from '@element-plus/icons-vue'
@@ -44,9 +46,9 @@ import { Bell, Document, List, Refresh } from '@element-plus/icons-vue'
 const emit = defineEmits(['navigate', 'refresh'])
 
 const actions = [
-  { path: '/notice', label: '查看公告', icon: Bell },
-  { path: '/todo', label: '我的待办', icon: List },
-  { path: '/leave', label: '发起请假', icon: Document },
+  { path: '/notice', label: '查看公告', icon: Bell, tone: 'indigo' },
+  { path: '/todo', label: '我的待办', icon: List, tone: 'orchid' },
+  { path: '/leave', label: '发起请假', icon: Document, tone: 'violet' },
 ]
 </script>
 
@@ -117,12 +119,25 @@ const actions = [
     box-shadow var(--st-duration-base) var(--st-ease);
 }
 
-/* hover 才点亮：底色换成那套 135° 渐变，图标翻白 */
+/* hover 才点亮：底色换成【目标模块的】那套 135° 渐变，图标翻白。
+   没挂 tone 的（刷数据）自动回主色蓝 —— 「刷新」不属于任何模块。 */
 .quick__item:hover .quick__icon {
   color: #fff;
-  background: var(--grad-blue);
+  background: var(--tile-grad, var(--grad-blue));
   box-shadow: var(--st-shadow-grad);
   transform: scale(1.08);
+}
+
+.quick__item.tone--indigo {
+  --tile-grad: var(--grad-indigo);
+}
+
+.quick__item.tone--violet {
+  --tile-grad: var(--grad-violet);
+}
+
+.quick__item.tone--orchid {
+  --tile-grad: var(--grad-orchid);
 }
 
 .quick__label {

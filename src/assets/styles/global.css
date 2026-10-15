@@ -28,6 +28,61 @@ a {
   text-decoration: none;
 }
 
+/* ============================================================
+   模块色：每个页面一个色相（浅色彩虹，青 → 紫 → 粉）
+   ------------------------------------------------------------
+   BasicLayout 会在 .layout__main 上挂一个 module--xxx，
+   下面这几个变量会【自动继承】给页面里的所有元素：
+     --module-grad  本模块的渐变（深档）→ 标题小横条、区块小竖条、按钮底
+     --module-ink   本模块的深色（单色）→ 当文字色 / 用作小面积纯色底
+     --module-soft  本模块的极浅色（单色）→ 当大面积浅底
+     --module-fade  本模块的“一丝色”→ 表格表头、卡片头（能看出颜色但不抢戏）
+
+   页面里【不要】再写死颜色，直接用这几个变量，换模块就自动跟着变。
+   ============================================================ */
+.module--dashboard {
+  --module-grad: var(--grad-teal);
+  --module-ink: var(--tone-teal-deep);
+  --module-soft: var(--tone-teal-soft);
+  --module-fade: var(--tone-teal-fade);
+}
+
+.module--notice {
+  --module-grad: var(--grad-indigo);
+  --module-ink: var(--tone-indigo-deep);
+  --module-soft: var(--tone-indigo-soft);
+  --module-fade: var(--tone-indigo-fade);
+}
+
+.module--leave {
+  --module-grad: var(--grad-violet);
+  --module-ink: var(--tone-violet-deep);
+  --module-soft: var(--tone-violet-soft);
+  --module-fade: var(--tone-violet-fade);
+}
+
+.module--todo {
+  --module-grad: var(--grad-orchid);
+  --module-ink: var(--tone-orchid-deep);
+  --module-soft: var(--tone-orchid-soft);
+  --module-fade: var(--tone-orchid-fade);
+}
+
+.module--contacts {
+  --module-grad: var(--grad-pink);
+  --module-ink: var(--tone-pink-deep);
+  --module-soft: var(--tone-pink-soft);
+  --module-fade: var(--tone-pink-fade);
+}
+
+/* AI 助手不属于任何模块，整条彩虹就是它的颜色 */
+.module--assistant {
+  --module-grad: var(--grad-rainbow);
+  --module-ink: var(--tone-violet-deep);
+  --module-soft: var(--tone-violet-soft);
+  --module-fade: var(--tone-violet-fade);
+}
+
 /* 页面主标题 */
 .page-title {
   position: relative;
@@ -37,14 +92,15 @@ a {
   color: var(--st-text-primary);
 }
 
-/* 标题下面那根渐变小横条：不占宽度，但一眼能看到「这是本页标题」 */
+/* 标题下面那根渐变小横条：不占宽度，但一眼能看到「这是本页标题」。
+   ⚠️ 用 --module-grad：每个页面的小横条颜色不一样，这就是「按模块分层」。 */
 .page-title::after {
   content: '';
   display: block;
   width: 28px;
   height: 3px;
   margin-top: 6px;
-  background: var(--st-gradient-brand);
+  background: var(--module-grad, var(--st-gradient-brand));
   border-radius: var(--st-radius-pill);
 }
 
@@ -333,7 +389,7 @@ a {
   background: linear-gradient(180deg, #fafcff 0%, #ffffff 100%);
 }
 
-/* 区块标题左边加一根渐变小竖条 —— 所有页面通用 */
+/* 区块标题左边加一根渐变小竖条 —— 所有页面通用，颜色跟着本模块走 */
 .section__title {
   position: relative;
   padding-left: 12px;
@@ -346,14 +402,15 @@ a {
   left: 0;
   width: 4px;
   height: 16px;
-  background: var(--st-gradient-brand);
+  background: var(--module-grad, var(--st-gradient-brand));
   border-radius: var(--st-radius-pill);
   transform: translateY(-50%);
 }
 
-/* 表头再明显一点，不然和数据行分不开 */
+/* 表头再明显一点，不然和数据行分不开。
+   底色跟着【当前模块的色相】走 —— 每页的表头颜色不同，这就是“按模块分层”。 */
 .el-table {
-  --el-table-header-bg-color: #f7faff;
+  --el-table-header-bg-color: var(--module-fade, #f7faff);
   --el-table-header-text-color: #4b5563;
 }
 

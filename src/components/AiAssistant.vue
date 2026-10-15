@@ -229,13 +229,16 @@ onBeforeUnmount(() => {
   transition: none;
 }
 
+/*
+ * 整条彩虹 = AI 的“品牌色”（它不属于任何单个模块，所以用全部色相）。
+ * 和面板里的圆形发送按钮同一套，一眼能认出「这俩是一回事」。
+ */
 .ai-fab :deep(.el-button) {
   width: 52px;
   height: 52px;
-  /* 和面板里那个圆形发送按钮用同一套渐变，一眼能认出「这俩是一回事」 */
   color: #fff;
-  background: var(--grad-blue);
-  box-shadow: 0 6px 18px rgb(66 108 179 / 35%);
+  background: var(--grad-rainbow);
+  box-shadow: 0 6px 18px rgb(131 113 194 / 34%);
   transition:
     transform var(--st-duration-base) var(--st-ease-back),
     box-shadow var(--st-duration-base) var(--st-ease);
@@ -244,9 +247,9 @@ onBeforeUnmount(() => {
 /* 悬停时放大 + 阴影拉深，让它看起来「能点」 */
 .ai-fab :deep(.el-button:hover) {
   color: #fff;
-  background: var(--grad-blue);
+  background: var(--grad-rainbow);
   transform: scale(1.1);
-  box-shadow: 0 10px 26px rgb(66 108 179 / 45%);
+  box-shadow: 0 10px 26px rgb(131 113 194 / 44%);
 }
 
 .ai-fab :deep(.el-button:active) {
@@ -264,12 +267,12 @@ onBeforeUnmount(() => {
 @keyframes ai-fab-breathe {
   0%,
   100% {
-    box-shadow: 0 6px 18px rgb(66 108 179 / 30%);
+    box-shadow: 0 6px 18px rgb(131 113 194 / 30%);
   }
   50% {
     box-shadow:
-      0 6px 18px rgb(66 108 179 / 30%),
-      0 0 0 10px rgb(66 108 179 / 8%);
+      0 6px 18px rgb(131 113 194 / 30%),
+      0 0 0 10px rgb(131 113 194 / 8%);
   }
 }
 
