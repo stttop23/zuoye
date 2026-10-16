@@ -101,7 +101,26 @@
           </template>
         </el-table-column>
         <el-table-column prop="role" label="岗位" min-width="150" />
-        <el-table-column prop="phone" label="联系电话" min-width="140" />
+        <el-table-column label="联系电话" min-width="180">
+          <template #default="{ row }">
+            <div class="phone-cell">
+              <span class="phone-mask" v-if="!row.phoneVisible">{{ row.phone }}</span>
+              <a v-else :href="`tel:${row.phoneFull}`" class="phone-link">{{ row.phoneFull }}</a>
+              <button
+                type="button"
+                class="phone-toggle"
+                @click="togglePhone(row.id)"
+                :aria-label="row.phoneVisible ? '隐藏电话' : '查看电话'"
+              >
+                <el-icon>
+                  <View v-if="!row.phoneVisible" />
+                  <Hide v-else />
+                </el-icon>
+                {{ row.phoneVisible ? '隐藏' : '查看' }}
+              </button>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="email" label="邮箱" min-width="210" />
       </el-table>
       <el-empty v-else description="没有找到符合条件的联系人" :image-size="100" />
@@ -113,27 +132,40 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { OfficeBuilding, Search, User } from '@element-plus/icons-vue'
+import { Hide, OfficeBuilding, Search, User, View } from '@element-plus/icons-vue'
 import { DIRECTORY_CONTACTS } from '@/mock'
 
-const contacts = DIRECTORY_CONTACTS
+const contacts = ref(
+  DIRECTORY_CONTACTS.map((contact) => ({
+    ...contact,
+    phoneVisible: false,
+  })),
+)
 const keyword = ref('')
 const selectedDepartment = ref('')
 
-const departments = computed(() => [...new Set(contacts.map((contact) => contact.department))])
+const departments = computed(() => [
+  ...new Set(contacts.value.map((contact) => contact.department)),
+])
 
 const departmentCounts = computed(() =>
   Object.fromEntries(
     departments.value.map((department) => [
       department,
-      contacts.filter((contact) => contact.department === department).length,
+      contacts.value.filter((contact) => contact.department === department).length,
     ]),
   ),
 )
 
+const togglePhone = (id) => {
+  const contact = contacts.value.find((item) => item.id === id)
+  if (!contact) return
+  contact.phoneVisible = !contact.phoneVisible
+}
+
 const filteredContacts = computed(() => {
   const query = keyword.value.trim().toLocaleLowerCase()
-  return contacts.filter((contact) => {
+  return contacts.value.filter((contact) => {
     const matchesDepartment =
       !selectedDepartment.value || contact.department === selectedDepartment.value
     const searchable = [contact.name, contact.department, contact.role]
@@ -270,6 +302,41 @@ const filteredContacts = computed(() => {
   flex-wrap: wrap;
   gap: var(--st-gap-sm);
   margin-bottom: var(--st-gap-base);
+}
+
+.phone-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.phone-mask,
+.phone-link {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.phone-link {
+  color: var(--st-primary);
+  text-decoration: none;
+}
+
+.phone-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  color: var(--st-text-secondary);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--st-border-color);
+  border-radius: 999px;
+}
+
+.phone-toggle:hover {
+  color: var(--st-primary);
+  border-color: var(--st-primary-light);
 }
 
 .department-chip {

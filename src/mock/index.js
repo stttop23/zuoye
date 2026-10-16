@@ -34,6 +34,7 @@ export const DIRECTORY_CONTACTS = [
     department: '技术组',
     role: '前端核心开发',
     phone: '138****1024',
+    phoneFull: '13812341024',
     email: 'liu.wan@example.com',
   },
   {
@@ -42,6 +43,7 @@ export const DIRECTORY_CONTACTS = [
     department: '事务组',
     role: '请假模块负责人',
     phone: '139****2058',
+    phoneFull: '13945682058',
     email: 'luo.xinyu@example.com',
   },
   {
@@ -50,6 +52,7 @@ export const DIRECTORY_CONTACTS = [
     department: '项目组',
     role: '项目统筹',
     phone: '137****3167',
+    phoneFull: '13722363167',
     email: 'zhang.jing@example.com',
   },
 ]
