@@ -1011,6 +1011,12 @@ def read_checkin(snapshot):
         return {"ok": True, "known": False, "today": today, "note": "打卡记录在用户浏览器里，这次没拿到"}
 
     place = state.get("place") or {}
+    # 和页面上显示的口径保持一致：省市县（+ 附近 POI）。
+    # ⚠️ 顺序必须和 CheckIn.vue 的 placeText 一样，否则会出现
+    #    「页面写浙江省杭州市拱墅区、AI 答鸡爪山」的同源不同答。
+    region = place.get("region") or ""
+    poi = place.get("poi") or ""
+    place_text = " · ".join([x for x in (region, poi) if x]) or place.get("short") or place.get("address") or ""
     return {
         "ok": True,
         "known": True,
@@ -1018,7 +1024,7 @@ def read_checkin(snapshot):
         "checked_in": state.get("lastDate") == today,
         "time": state.get("lastTime") or "",
         "streak": state.get("streak") or 0,
-        "place": place.get("poi") or place.get("short") or place.get("address") or "",
+        "place": place_text,
         "items": [],
     }
 
@@ -1886,6 +1892,23 @@ def amap_reverse(lat, lng):
     regeo = payload.get("regeocode") or {}
     parts = regeo.get("addressComponent") or {}
 
+    province = text_field(parts.get("province"))
+    city = text_field(parts.get("city"))
+    district = text_field(parts.get("district"))
+
+    # 省 + 市 + 区/县 = 「省市县」（页面要显示的就是这三级）
+    # ⚠️ 两个坑，都不能写死三段拼接：
+    #   1. 【直辖市】高德会把 province 和 city 都填成同一个值（北京市/北京市）
+    #      → 直接相加拼出「北京市北京市朝阳区」。必须去重。
+    #   2. 【省直辖县级行政区】（如海南省五指山市）city 会是空；
+    #      个别情况下 province 也是空 —— 所以按顺序判空追加。
+    region_parts = [province]
+    if city and city != province:
+        region_parts.append(city)
+    if district:
+        region_parts.append(district)
+    region = "".join(region_parts)
+
     # 由远到近拼一个短地址（不要省，太长了手机上换行很难看）
     # ⚠️ 高德把「路名」放在 streetNumber.street 里，没有顶层的 street 字段。
     #    一开始写成 parts["street"]，拼出来是「灵隐街道866号」—— 路名丢了。
@@ -1898,8 +1921,8 @@ def amap_reverse(lat, lng):
 
     short = "".join(
         [
-            text_field(parts.get("city")) or text_field(parts.get("province")),
-            text_field(parts.get("district")),
+            city or province,
+            district,
             text_field(parts.get("township")),
             street,
             number,
@@ -1915,6 +1938,7 @@ def amap_reverse(lat, lng):
         "source": "amap",
         "poi": text_field(first.get("name")),
         "poiDistance": text_field(first.get("distance")),
+        "region": region,
         "short": short,
         "address": text_field(regeo.get("formatted_address")),
     }

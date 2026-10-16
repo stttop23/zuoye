@@ -80,9 +80,14 @@ const placeText = computed(() => {
   if (!place) return ''
   if (place.error) return place.error
 
-  // 顺序：附近 POI 名 > 拼好的短地址 > 完整地址 > 坐标。
-  // 「短地址」是后端专门拼的（市+区+街道），比完整地址短得多。
-  // 拿不到地名就退回坐标 —— 退回去是常态，不算出错。
+  // 顺序：省市县（+ 附近 POI）> POI > 拼好的短地址 > 完整地址 > 坐标。
+  // ⚠️ region（省+市+区）排最前，因为光显示 POI 名看不出在哪个市哪个区 ——
+  //    比如「鸡爪山」三个字本身得不出任何方位信息。
+  // ⚠️ region 是后加的字段，**老记录里没有**，所以必须留回退，不能直接拼。
+  if (place.region) {
+    return place.poi ? `${place.region} · ${place.poi}` : place.region
+  }
+
   return (
     place.poi ||
     place.short ||
@@ -139,6 +144,7 @@ async function doCheckIn() {
     const geo = await reverseGeocode(place)
     if (geo) {
       place.poi = geo.poi
+      place.region = geo.region
       place.address = geo.short || geo.address
     }
   }
