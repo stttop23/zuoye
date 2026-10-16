@@ -42,11 +42,14 @@ const routes = [
         component: () => import('../../liuwan/views/contacts/index.vue'),
         meta: { title: '通讯录', icon: 'User' },
       },
-      // 群聊模块来自 feature/luo-xinyu
+      // 群聊模块来自 feature/luo-xinyu（罗欣雨）
       {
         path: 'chat',
         name: 'Chat',
-        component: () => import('@/views/chat/ChatView.vue'),
+        // ⚠️ 原来写的是 @/views/chat/ChatView.vue（即 src/views/chat/）——
+        //    src/views/ 这个目录十月就被按成员拆分掉了，写回去等于结构倒退。
+        //    现按全站惯例放到本人的模块文件夹：luoxinyu/views/chat/index.vue
+        component: () => import('../../luoxinyu/views/chat/index.vue'),
         meta: { title: '群聊', icon: 'ChatLineRound' },
       },
       {

@@ -397,7 +397,7 @@ onUnmounted(() => {
 .message-avatar,
 .member-avatar {
   flex: 0 0 auto;
-  color: #fff;
+  color: var(--st-text-inverse);
   font-weight: 600;
 }
 
@@ -414,12 +414,15 @@ onUnmounted(() => {
   background: var(--st-warning);
 }
 
+/* ⚠️ 原来这两个是写死的 #8b7bd8 / #42a99b，
+ *    数值上就跟我那套色相令牌很像，但没走变量 —— 换主题时会被漏掉。
+ *    现在直接指到调色板的 deep 档。 */
 .avatar-purple {
-  background: #8b7bd8;
+  background: var(--tone-violet-deep);
 }
 
 .avatar-teal {
-  background: #42a99b;
+  background: var(--tone-teal-deep);
 }
 
 .avatar-gray {

@@ -83,6 +83,16 @@ a {
   --module-fade: var(--tone-violet-fade);
 }
 
+/* 群聊（罗欣雨的模块）：色相跟侧边栏菜单项保持一致（teal）。
+ * ⚠️ 不写这一段的话，--module-* 取不到值，标题小横条和表头
+ *    会悄悄回退成主色蓝 —— 看着不报错，但整页和别页不是一套。 */
+.module--chat {
+  --module-grad: var(--grad-teal);
+  --module-ink: var(--tone-teal-deep);
+  --module-soft: var(--tone-teal-soft);
+  --module-fade: var(--tone-teal-fade);
+}
+
 /* 页面主标题 */
 .page-title {
   position: relative;
