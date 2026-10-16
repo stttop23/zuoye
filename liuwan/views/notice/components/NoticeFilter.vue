@@ -52,11 +52,31 @@ const emit = defineEmits(['search', 'reset'])
 </script>
 
 <style scoped>
+/* v2：卡片统一「白底 + 发丝边 + 14px 圆角 + 一层几乎看不见的柔影」。
+   以前这里写 border:none 想「去掉卡片的框」，结果 scoped 的 0,2,0 权重
+   和 global.css 里 .el-card.el-card.el-card 打平、又注入得更晚，把全局
+   已经给好的边界感顶掉了，白卡贴在浅灰页底上整块会「平」掉。 */
 .section {
-  border: none;
+  border: 1px solid var(--st-border-color-hair);
+  border-radius: var(--st-radius-card);
+  box-shadow: var(--st-shadow-card);
 }
 
 .section :deep(.el-form-item) {
   margin-bottom: 0;
+}
+
+/* 搜索栏是内联表单，默认行距会把两个控件贴在一起，让卡片内部透口气 */
+.section :deep(.el-form--inline) {
+  margin-top: var(--st-gap-xs);
+}
+
+/* 窄屏：关键词框的 260px 内联宽度会把「类型 + 按钮组」挤出卡片，
+   放开成弹性宽度并允许整行换行。按钮组自身在 ≤768px 下也会换行。 */
+@media (max-width: 768px) {
+  .section :deep(.el-input),
+  .section :deep(.el-select) {
+    width: 100% !important;
+  }
 }
 </style>

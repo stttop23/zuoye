@@ -44,7 +44,14 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, List, User, Warning } from '@element-plus/icons-vue'
 import { useUserProfile } from '@/composables/userProfile'
-import { dashboardSummary, latestNotices } from '@/composables/appStore'
+import {
+  dashboardSummary,
+  latestNotices,
+  leaveRecords,
+  notices,
+  todos,
+} from '@/composables/appStore'
+import { DIRECTORY_CONTACTS } from '@/mock'
 import CheckIn from './components/CheckIn.vue'
 import StatCards from './components/StatCards.vue'
 import QuickActions from './components/QuickActions.vue'
@@ -61,17 +68,63 @@ const { userName, userInitial } = useUserProfile()
  */
 const summary = computed(() => dashboardSummary())
 
-const stats = computed(() => [
+/** 今天的 'YYYY-MM-DD'。⚠️ 用本地时间拼，别用 toISOString —— 那是 UTC，晚上会差一天 */
+function todayStr() {
+  const d = new Date()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mm}-${dd}`
+}
+
+const stats = computed(() => {
+  const today = todayStr()
+  const overdue = todos.value.filter(
+    (t) => t.status !== '已完成' && t.dueDate && t.dueDate < today,
+  ).length
+  const pending = leaveRecords.value.filter((r) => r.status === '待审批').length
+  const topped = notices.value.filter((n) => n.top).length
+  const departments = new Set(DIRECTORY_CONTACTS.map((c) => c.department)).size
+
   /*
    * tone = 卡片色相。四张卡从左到右扫过彩虹（青→蓝紫→紫→粉），
    * 这只是为了好看；它【不】跟模块色绑定 ——
    * 卡片排在同一行，按模块配会变成三张紫的挤在一起。
+   *
+   * sub = 卡片底下那行小字。⚠️ 必须是【从数据里算出来的】真数字：
+   *   以前这里放过“较昨日 +12%”这种占位文案，那属于造假，一律不要。
+   *   算出来是 0 就老实说 0（比如“无逾期”）。
    */
-  { label: '待办事项', value: summary.value.todo, icon: List, tone: 'teal' },
-  { label: '请假申请', value: summary.value.leave, icon: Document, tone: 'indigo' },
-  { label: '公告数量', value: summary.value.notice, icon: Warning, tone: 'violet' },
-  { label: '小组成员', value: summary.value.member, icon: User, tone: 'pink' },
-])
+  return [
+    {
+      label: '待办事项',
+      value: summary.value.todo,
+      icon: List,
+      tone: 'teal',
+      sub: overdue ? `其中 ${overdue} 条已逾期` : '暂无逾期',
+    },
+    {
+      label: '请假申请',
+      value: summary.value.leave,
+      icon: Document,
+      tone: 'indigo',
+      sub: pending ? `${pending} 条待审批` : '全部已处理',
+    },
+    {
+      label: '公告数量',
+      value: summary.value.notice,
+      icon: Warning,
+      tone: 'violet',
+      sub: topped ? `${topped} 条置顶` : '无置顶公告',
+    },
+    {
+      label: '小组成员',
+      value: summary.value.member,
+      icon: User,
+      tone: 'pink',
+      sub: `分属 ${departments} 个部门`,
+    },
+  ]
+})
 
 /**
  * 最新公告：直接从公告页那份数据里取前 3 条（同一份，所以在公告页发一条，这里马上就有）。
@@ -109,7 +162,8 @@ function onRefresh() {
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: var(--st-gap-base);
+  /* 20px 而不是 16px：卡片之间留够气，整页看起来才“顺”，不会挤成一堆 */
+  gap: 20px;
 }
 
 /* ---------- 顶部欢迎卡：全页唯一一张铺渐变的卡 ----------
@@ -125,7 +179,22 @@ function onRefresh() {
   position: relative;
   overflow: hidden;
   color: var(--st-text-primary);
-  background: var(--st-gradient-hero); /* = 浅彩虹 青→紫→粉 */
+  /*
+   * 两层叠起来：
+   *   上层：白色蒙版，左边 74% 几乎盖白、到最右边完全透明。
+   *   下层：--grad-hero（100° 的浅彩虹）。
+   * 效果是「白卡从左边渐变出血到彩虹」—— 文字/头像落在白底那一侧，
+   * 对比度反而比整张铺满彩色更好，也不会显得脏。
+   * ⚠️ 色值一律走令牌，别在这写死 hex（换主题时要全找一遍）。
+   */
+  background:
+    linear-gradient(
+      100deg,
+      rgb(255 255 255 / 74%) 0%,
+      rgb(255 255 255 / 12%) 78%,
+      rgb(255 255 255 / 0%) 100%
+    ),
+    var(--st-gradient-hero);
   border: none;
   border-radius: var(--st-radius-card);
   box-shadow: var(--st-shadow-rainbow);

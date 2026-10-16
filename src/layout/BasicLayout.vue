@@ -448,6 +448,11 @@ watch(
   display: flex;
   flex-direction: column;
   background: var(--st-nav-bg);
+  /*
+   * ⚠️ 这条右边框【不能省】：侧边栏和内容区现在都是白的，
+   *    没有它两块会连成一片，看不出导航到哪儿结束。
+   */
+  border-right: 1px solid var(--st-nav-border);
   transition: width var(--st-duration-base) var(--st-ease);
   overflow: hidden;
 }
@@ -484,7 +489,7 @@ watch(
 .layout__logo-text {
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
+  color: var(--st-text-primary);
 }
 
 /* ==================== 菜单 ==================== */
@@ -526,62 +531,71 @@ watch(
 }
 
 /*
- * 每个菜单项自己的两个变量（模板里挂的 tone--xxx）：
- *   --menu-grad  选中竖条的颜色（deep 档，深底上看得见）
- *   --menu-tone  图标颜色（light 档，深底上更亮）
- * 深色侧边栏上【不能】用 soft 或 deep 当图标色：
- * soft 几乎和白底一样，直接“消失”。
+ * 每个菜单项自己的三个变量（模板里挂的 tone--xxx）：
+ *   --menu-grad  选中竖条的颜色（deep 档渐变）
+ *   --menu-tone  图标颜色
+ *   --menu-wash  悬停 / 选中的底色
+ *
+ * ⚠️ 侧边栏改成【白底】之后，图标必须用 deep 档 ——
+ *    原来读的是 light 档（#86c9c1 那种），那是配深海军蓝才够亮的颜色，
+ *    放白底上几乎看不清。
  */
 .layout__menu :deep(.el-menu-item.tone--teal) {
   --menu-grad: var(--grad-teal);
-  --menu-tone: var(--tone-teal-light);
+  --menu-tone: var(--tone-teal-deep);
+  --menu-wash: var(--tone-teal-fade);
 }
 
 .layout__menu :deep(.el-menu-item.tone--indigo) {
   --menu-grad: var(--grad-indigo);
-  --menu-tone: var(--tone-indigo-light);
+  --menu-tone: var(--tone-indigo-deep);
+  --menu-wash: var(--tone-indigo-fade);
 }
 
 .layout__menu :deep(.el-menu-item.tone--violet) {
   --menu-grad: var(--grad-violet);
-  --menu-tone: var(--tone-violet-light);
+  --menu-tone: var(--tone-violet-deep);
+  --menu-wash: var(--tone-violet-fade);
 }
 
 .layout__menu :deep(.el-menu-item.tone--orchid) {
   --menu-grad: var(--grad-orchid);
-  --menu-tone: var(--tone-orchid-light);
+  --menu-tone: var(--tone-orchid-deep);
+  --menu-wash: var(--tone-orchid-fade);
 }
 
 .layout__menu :deep(.el-menu-item.tone--pink) {
   --menu-grad: var(--grad-pink);
-  --menu-tone: var(--tone-pink-light);
+  --menu-tone: var(--tone-pink-deep);
+  --menu-wash: var(--tone-pink-fade);
 }
 
 .layout__menu :deep(.el-menu-item.tone--rainbow) {
   --menu-grad: var(--grad-rainbow);
-  --menu-tone: var(--tone-violet-light);
+  --menu-tone: var(--tone-violet-deep);
+  --menu-wash: var(--tone-violet-fade);
 }
 
 .layout__menu :deep(.el-menu-item.is-active)::before {
   height: 18px;
 }
 
-/* 深色底上的菜单：默认浅白，悬停/选中变纯白。
-   ⚠️ 不能用 --st-primary 那种中蓝色 —— 深底上对比度不够，看着像“没选中” */
+/* 白底上的菜单：默认中灰，悬停/选中变深。
+   悬停 / 选中的底色用【本菜单自己的浅色】—— 白侧边栏也能看出那抹彩虹。 */
 .layout__menu :deep(.el-menu-item) {
   color: var(--st-nav-text);
 }
 
 .layout__menu :deep(.el-menu-item:hover) {
   color: var(--st-nav-text-active);
-  background: var(--st-nav-hover-bg);
+  background: var(--menu-wash, var(--st-nav-hover-bg));
   transform: translateX(3px);
 }
 
 .layout__menu :deep(.el-menu-item.is-active) {
   color: var(--st-nav-text-active);
   font-weight: 600;
-  background: var(--st-nav-active-bg);
+  background: var(--menu-wash, var(--st-nav-active-bg));
 }
 
 /* 图标带本菜单的色相 —— 侧边栏一眼就是一小段彩虹 */
@@ -683,7 +697,8 @@ watch(
   justify-content: space-between;
   height: var(--st-header-height);
   background: var(--st-gradient-topbar);
-  border-bottom: 1px solid var(--st-border-color-hair);
+  /* 和侧边栏右边框同一根线：白底白底靠它划开，不能更淡了 */
+  border-bottom: 1px solid var(--st-nav-border);
 }
 
 .layout__header-left {
@@ -774,8 +789,9 @@ watch(
 
 /* ---------- 内容区 ---------- */
 .layout__main {
-  padding: var(--st-gap-base);
-  /* 透明，让 .layout 上那层渐变透出来 */
+  /* 加到 20px：清新系的观感一半靠留白，内容贴着浏览边会显挤 */
+  padding: 20px;
+  /* 透明，让 .layout 上的底色透出来 */
   background: transparent;
 }
 
@@ -835,7 +851,7 @@ watch(
   }
 
   .layout__main {
-    padding: var(--st-gap-sm);
+    padding: var(--st-gap-md);
   }
 }
 

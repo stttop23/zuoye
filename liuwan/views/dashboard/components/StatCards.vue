@@ -6,17 +6,18 @@
         class="stat-card st-fade-up"
         :class="[`st-delay-${index + 1}`, `tone--${item.tone}`]"
       >
-        <div class="stat-card__inner">
-          <div class="stat-card__icon">
-            <el-icon :size="20"><component :is="item.icon" /></el-icon>
-          </div>
-          <div>
-            <div class="stat-card__value">
-              <CountUp :value="item.value" />
-            </div>
-            <div class="stat-card__label">{{ item.label }}</div>
-          </div>
+        <div class="stat-card__top">
+          <span class="stat-card__label">{{ item.label }}</span>
+          <span class="stat-card__icon">
+            <el-icon :size="18"><component :is="item.icon" /></el-icon>
+          </span>
         </div>
+
+        <div class="stat-card__value">
+          <CountUp :value="item.value" />
+        </div>
+
+        <div class="stat-card__sub">{{ item.sub }}</div>
       </el-card>
     </el-col>
   </el-row>
@@ -25,11 +26,18 @@
 <script setup>
 /**
  * 数据卡片：纯展示组件，数据由父级传入。
- * item 结构：{ label, value, icon, tone }
+ * item 结构：{ label, value, icon, tone, sub }
  *
- * tone = 卡片色相（浅色彩虹：青→蓝紫→紫→粉）。
- *   卡身依然是【纯白】，只有两个地方上色：顶部那条 4px 细条 + 图标底。
- *   四张卡颜色不一样才有“彩虹”，但只给这一小块，大面积白留白才不吵。
+ * 版式（就是主流后台模板那一套，很好用）：
+ *   第一行：小字标签（左） + 软底图标（右）
+ *   第二行：大号数字
+ *   第三行：一行真实的小字（分隔线上方）
+ * 比“图标在左、数字在右”更透气，数字也更突出 —— 看板本来就是看数字的。
+ *
+ * tone = 卡片色相。三档各自的活儿：
+ *   --card-wash  图标底（很浅）
+ *   --card-ink   图标颜色（深）
+ *   --card-line  悬停时的边框色（中等）
  *
  * 动效全在这里、不需要父级配合：
  *   - 数字从 0 滚上来（CountUp）
@@ -56,97 +64,99 @@ defineProps({
   border: 1px solid var(--st-border-color-hair);
   border-radius: var(--st-radius-card);
   box-shadow: var(--st-shadow-soft);
+  /* 卡片内边距比 EP 默认的 20px 略收，四张卡并排才不显得胖 */
+  --el-card-padding: 18px 20px;
   transition:
     transform var(--st-duration-base) var(--st-ease),
     box-shadow var(--st-duration-base) var(--st-ease),
     border-color var(--st-duration-base) var(--st-ease);
 }
 
-/* 每张卡自己的渐变（模板里挂的 tone--xxx） */
+/* 每张卡自己的三档色（模板里挂的 tone--xxx） */
 .stat-card.tone--teal {
-  --card-grad: var(--grad-teal);
+  --card-wash: var(--tone-teal-fade);
+  --card-ink: var(--tone-teal-deep);
+  --card-line: var(--tone-teal-soft);
 }
 
 .stat-card.tone--indigo {
-  --card-grad: var(--grad-indigo);
+  --card-wash: var(--tone-indigo-fade);
+  --card-ink: var(--tone-indigo-deep);
+  --card-line: var(--tone-indigo-soft);
 }
 
 .stat-card.tone--violet {
-  --card-grad: var(--grad-violet);
+  --card-wash: var(--tone-violet-fade);
+  --card-ink: var(--tone-violet-deep);
+  --card-line: var(--tone-violet-soft);
 }
 
 .stat-card.tone--pink {
-  --card-grad: var(--grad-pink);
-}
-
-/*
- * 顶部一条通宽的渐变细条（4px）。
- * 整排四张卡各一道不同颜色的光 —— 比原来那种「四张卡一个颜色」有精神，
- * 但又只占 4px，不会把页面打成花脸。
- */
-.stat-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 4px;
-  background: var(--card-grad, var(--grad-blue));
+  --card-wash: var(--tone-pink-fade);
+  --card-ink: var(--tone-pink-deep);
+  --card-line: var(--tone-pink-soft);
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--card-grad, var(--st-primary-glow));
+  transform: translateY(-3px);
+  border-color: var(--card-line, var(--st-primary-glow));
   box-shadow: var(--st-shadow-hover);
 }
 
-.stat-card__inner {
-  position: relative;
-  z-index: 1;
+/* 第一行：标签在左、图标在右 */
+.stat-card__top {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.stat-card__text {
-  min-width: 0;
+.stat-card__label {
+  padding-top: 6px;
+  font-size: 13px;
+  color: var(--st-text-secondary);
 }
 
 /*
- * 图标：「渐变底 + 白色图标」。
+ * 图标：浅底 + 同色深图标。
  * ⚠️ 想要「图标图形本身被渐变填充」，得用 SVG 的 mask 或给每个 SVG 加一个
- *    gradient defs —— 图标是 Element Plus 的组件、形状各不相同，做不通用。
- *    渐变底白图标在观感上等价，而且能跟着色相变量一起换。
+ *    gradient defs —— Element Plus 的图标形状各不相同，做不通用。
+ *    浅底深图标在模板里就是这个做法，观感稳，也不会把卡片弄得太吵。
  */
 .stat-card__icon {
-  display: flex;
+  display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  color: #fff;
-  background: var(--card-grad, var(--grad-blue));
-  border-radius: var(--st-radius-base);
-  box-shadow: var(--st-shadow-grad);
+  width: 38px;
+  height: 38px;
+  color: var(--card-ink, var(--st-primary));
+  background: var(--card-wash, var(--st-primary-light));
+  border-radius: 10px;
   transition: transform var(--st-duration-base) var(--st-ease-back);
 }
 
-/* 卡片悬停时图标也放大一点，视线自然会跟过去 */
+/* 卡片悬停时图标轻转一下，视线自然会跟过去 */
 .stat-card:hover .stat-card__icon {
   transform: scale(1.08) rotate(-6deg);
 }
 
 .stat-card__value {
-  font-size: 24px;
+  margin-top: 4px;
+  font-size: 30px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--st-text-primary);
   /* 数字宽度固定，滚动时旁边文字不会跟着抖 */
   font-variant-numeric: tabular-nums;
 }
 
-.stat-card__label {
-  margin-top: 2px;
-  font-size: 13px;
+/* 底下那行真数字：一条细分割线隔开，当“脚注”用 */
+.stat-card__sub {
+  margin-top: 12px;
+  padding-top: 10px;
+  font-size: 12px;
   color: var(--st-text-secondary);
+  border-top: 1px solid var(--st-border-color-hair);
 }
 </style>

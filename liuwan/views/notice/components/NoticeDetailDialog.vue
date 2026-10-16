@@ -1,6 +1,6 @@
 <template>
   <el-dialog v-model="visible" :title="notice?.title" width="640px">
-    <el-descriptions :column="2" border size="default">
+    <el-descriptions :column="2" border size="small">
       <el-descriptions-item label="发布人">{{ notice?.author }}</el-descriptions-item>
       <el-descriptions-item label="类型">{{ notice?.type }}</el-descriptions-item>
       <el-descriptions-item label="发布时间" :span="2">
@@ -31,13 +31,16 @@ const visible = defineModel({ type: Boolean, default: false })
 </script>
 
 <style scoped>
+/* 正文块：凹陷底 + 发丝边，和上方 el-descriptions 的表格底区分开。
+   v2 规范：行高收到 1.6（1.8 太长，公告正文会显得散），圆角用卡片档。 */
 .notice__content {
   margin-top: var(--st-gap-base);
   padding: var(--st-gap-base);
   font-size: 14px;
-  line-height: 1.8;
+  line-height: 1.6;
   color: var(--st-text-regular);
-  background: var(--st-bg-page);
-  border-radius: var(--st-radius-sm);
+  background: var(--st-bg-sunken);
+  border: 1px solid var(--st-border-color-hair);
+  border-radius: var(--st-radius-base);
 }
 </style>

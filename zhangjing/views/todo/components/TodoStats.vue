@@ -42,19 +42,24 @@ defineProps({
   justify-content: space-between;
   min-height: 72px;
   padding: 0 var(--st-gap-base);
-  border: 1px solid var(--st-border-color-light);
-  border-radius: var(--st-radius-base);
+  border: 1px solid var(--st-border-color-hair);
+  border-radius: var(--st-radius-card);
   background: var(--st-bg-card);
+  box-shadow: var(--st-shadow-card);
 }
 
 .summary-label {
   color: var(--st-text-secondary);
-  font-size: 14px;
+  font-size: 13px;
 }
 
+/* 统计大数字：28px/700 + 等宽数字，四张卡的数字才对齐 */
 .summary-value {
   color: var(--st-text-primary);
-  font-size: 24px;
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
   line-height: 1;
 }
 
@@ -70,7 +75,7 @@ defineProps({
   color: var(--st-success);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--st-gap-sm);
@@ -78,7 +83,7 @@ defineProps({
 
   .summary-item {
     min-height: 64px;
-    padding: 0 12px;
+    padding: 0 var(--st-gap-md);
   }
 }
 </style>

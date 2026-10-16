@@ -101,7 +101,7 @@ const actions = [
   transform: translateY(-1px) scale(0.99);
 }
 
-/* 图标默认单色灰 —— 一整排四块艳色会互相抢视线 */
+/* 图标底也带本模块的色（浅档），hover 再满上渐变 */
 .quick__icon {
   display: inline-flex;
   flex-shrink: 0;
@@ -109,9 +109,9 @@ const actions = [
   justify-content: center;
   width: 36px;
   height: 36px;
-  color: var(--st-text-secondary);
-  background: var(--st-bg-page);
-  border-radius: var(--st-radius-sm);
+  color: var(--tile-ink, var(--st-text-secondary));
+  background: var(--tile-wash, var(--st-bg-page));
+  border-radius: 10px;
   transition:
     transform var(--st-duration-base) var(--st-ease-back),
     color var(--st-duration-base) var(--st-ease),
@@ -119,7 +119,7 @@ const actions = [
     box-shadow var(--st-duration-base) var(--st-ease);
 }
 
-/* hover 才点亮：底色换成【目标模块的】那套 135° 渐变，图标翻白。
+/* hover 才满上：底色换成【目标模块的】那套 135° 渐变，图标翻白。
    没挂 tone 的（刷数据）自动回主色蓝 —— 「刷新」不属于任何模块。 */
 .quick__item:hover .quick__icon {
   color: #fff;
@@ -129,14 +129,20 @@ const actions = [
 }
 
 .quick__item.tone--indigo {
+  --tile-wash: var(--tone-indigo-fade);
+  --tile-ink: var(--tone-indigo-deep);
   --tile-grad: var(--grad-indigo);
 }
 
 .quick__item.tone--violet {
+  --tile-wash: var(--tone-violet-fade);
+  --tile-ink: var(--tone-violet-deep);
   --tile-grad: var(--grad-violet);
 }
 
 .quick__item.tone--orchid {
+  --tile-wash: var(--tone-orchid-fade);
+  --tile-ink: var(--tone-orchid-deep);
   --tile-grad: var(--grad-orchid);
 }
 

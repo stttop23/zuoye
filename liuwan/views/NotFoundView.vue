@@ -15,11 +15,13 @@ const router = useRouter()
 </script>
 
 <style scoped>
+/* v2：整页居中留白，窄屏时四周留出令牌间距，别让 404 卡片贴住屏幕边 */
 .not-found {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100%;
+  padding: var(--st-gap-base);
   background: var(--st-bg-page);
 }
 </style>

@@ -131,4 +131,19 @@ async function save() {
 .todo-dialog {
   max-width: 92vw;
 }
+
+/* 弹窗圆角/边界由 global.css 统一给（EP 自带的 box-shadow 权重相同、
+   注入更晚，这里就不去和它抢了），本页只补一个底部留白。
+   弹窗被 teleport 到 body，挂不到 scoped 属性上，所以用 :global 写类名 */
+:global(.todo-dialog .el-dialog__footer) {
+  padding-top: var(--st-gap-base);
+}
+
+@media (max-width: 768px) {
+  /* 触摸目标不小于 44px（同样是 teleport 出去的内容，得用 :global） */
+  :global(.todo-dialog .el-input__wrapper),
+  :global(.todo-dialog .el-select__wrapper) {
+    min-height: 44px;
+  }
+}
 </style>

@@ -43,6 +43,12 @@ coverage/
 # PowerShell 没有 heredoc，只能先写文件再 git commit -F。
 # 不忽略的话，git add -A 会把它一起提交上去（踩过一次）。
 .commit-msg.tmp
+
+# --- 自动化工具跑出来的产物（不是项目文件）---
+# UI 审计脚本/截图/DOM 快照、看图工具的中间结果。
+# 这些动辄几十 MB，而且每次跑都会变，不该进仓库。
+.ui-audit/
+.dsh-vision-router/
 .env.*
 !.env.example
 

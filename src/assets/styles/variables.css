@@ -22,16 +22,21 @@
   --st-danger-light: #fef0f0;
   --st-info: #909399;
 
-  /* ---------- 深色侧边栏 ----------
-   * 底色是深海军蓝，菜单项文字/悬停/选中都从这几个变量取，
-   * 别在页面里各写一遍 rgba（改起来要全找一遍）。
+  /* ---------- 侧边栏（浅色）----------
+   * v5：从深海军蓝改成【白色】。整站走浅色清新，深色侧边会显得头重脚轻；
+   * 「白导航 + 发丝分隔线」才是轻的做法。
+   * ⚠️ 这几个变量现在配的是【白底】：文字必须是深色，
+   *    菜单图标也不能再读 light 档（那是给深底用的），见 BasicLayout。
+   *    hover / active 底色故意留得很淡，不跟右侧内容抢。
    */
-  --st-nav-bg: #1a2a42;
-  --st-nav-text: rgba(255, 255, 255, 0.72);
-  --st-nav-text-active: #ffffff;
-  --st-nav-hover-bg: rgba(255, 255, 255, 0.07);
-  --st-nav-active-bg: rgba(255, 255, 255, 0.1);
-  --st-nav-divider: rgba(255, 255, 255, 0.08);
+  --st-nav-bg: #ffffff;
+  --st-nav-text: #5a6472;
+  --st-nav-text-active: #1f2937;
+  --st-nav-hover-bg: #f5f8fc;
+  --st-nav-active-bg: #eef3fa;
+  --st-nav-divider: rgba(16, 42, 82, 0.07);
+  /* 侧边栏和内容区之间的那条线：白底白底靠它分开，不能省 */
+  --st-nav-border: rgba(16, 42, 82, 0.08);
 
   /* ---------- 渐变 ----------
    * 四条规矩（写下来才不会乱）：
@@ -100,32 +105,44 @@
   --grad-rainbow: linear-gradient(135deg, #4f9d94 0%, #8371c2 50%, #cb7891 100%);
   --grad-rainbow-soft: linear-gradient(135deg, #c6e6e1 0%, #d8cdf0 50%, #f5ced9 100%);
 
+  /* 首页英雄卡的彩虹：故意用 100°（几乎水平）。
+   * 卡片是横长条的，135° 的对角扫在它上面高度方向拉开太少，看不出渐变；
+   * 100° 才能让「青→紫→粉」从左到右完整铺开。 */
+  --grad-hero: linear-gradient(100deg, #c6e6e1 0%, #d8cdf0 52%, #f5ced9 100%);
+
   /* 兼容旧名字（global.css / BasicLayout 在用） */
   --st-gradient-brand: var(--grad-blue);
   --st-gradient-logo: var(--grad-rainbow); /* logo 方块 = 整条彩虹，当品牌标记 */
-  --st-gradient-hero: var(--grad-rainbow-soft); /* 首页顶部那张卡 */
-  /* 侧边栏直接用变量表里的深色，不走渐变 */
+  --st-gradient-hero: var(--grad-hero); /* 首页顶部那张卡 */
+  /* 侧边栏直接用变量表里的底色，不走渐变 */
   --st-gradient-sidebar: var(--st-nav-bg);
-  --st-gradient-topbar: linear-gradient(
-    90deg,
-    rgba(236, 245, 255, 0.9) 0%,
-    rgba(255, 255, 255, 0.82) 40%,
-    rgba(255, 255, 255, 0.82) 100%
-  );
+  /* 顶栏就是白的：整站 chrome（侧边栏 + 顶栏）统一白，靠发丝线分区。
+     以前那层淡蓝渐变在浅色页底上会显脏。 */
+  --st-gradient-topbar: #ffffff;
 
-  /* ---------- 文字 ---------- */
-  --st-text-primary: #303133; /* 标题 / 正文 */
-  --st-text-regular: #606266; /* 常规文字 */
-  --st-text-secondary: #909399; /* 次要说明 */
-  --st-text-placeholder: #c0c4cc;
+  /* ---------- 文字 ----------
+   * v5 转浅色清新：从原来的暖灰（#303133）换成【冷调的板岩灰】。
+   * 同样的亮度下，冷灰配浅蓝白底更干净；暖灰会显旧。
+   */
+  --st-text-primary: #1f2937; /* 标题 / 正文 */
+  --st-text-regular: #5a6472; /* 常规文字 */
+  --st-text-secondary: #8a94a6; /* 次要说明 */
+  --st-text-placeholder: #b6c0cd;
+  /* 深色底上的文字（比如实底按钮上的白字） */
+  --st-text-inverse: #ffffff;
 
   /* ---------- 背景 / 边框 ---------- */
-  --st-bg-page: #f5f7fa; /* 页面底色 */
+  --st-bg-page: #f6f9fc; /* 页面底色：比原来的 #f5f7fa 略偏冷，更清新 */
   --st-bg-card: #ffffff; /* 卡片底色 */
   --st-bg-hover: #f5f8fc; /* 悬停底色 */
-  --st-border-color: #dcdfe6;
-  --st-border-color-light: #e4e7ed;
-  --st-border-color-hair: #eef1f6; /* 更浅，做分割线不抢眼 */
+  /* 「凹进去」的一块面：弹窗里的正文块、代码块这种。
+     比页面底色再深一档，才能在白卡里看出“这是一整块”。
+     ⚠️ 这个令牌是后补的：NoticeDetailDialog 已经在用，但表里当初没定义 ——
+        后果是【background 整条被丢弃】，那个块直接变透明，很难看出是 bug。 */
+  --st-bg-sunken: #f1f5f9;
+  --st-border-color: #e2e8f0;
+  --st-border-color-light: #e9eef5;
+  --st-border-color-hair: #f0f3f8; /* 更浅，做分割线不抢眼 */
 
   /* ---------- 圆角（比原来大一点，观感更现代） ---------- */
   --st-radius-sm: 6px;
@@ -134,24 +151,32 @@
   --st-radius-lg: 16px;
   --st-radius-pill: 999px;
 
-  /* ---------- 间距 ---------- */
+  /* ---------- 间距 ----------
+   * ⚠️ --st-gap-md 是后补的：有别处代码已经在用（contacts / TodoStats / TodoToolbar），
+   *    但表里当初没定义 —— var() 取不到值会让【整条声明失效】，
+   *    表现是间距直接变 0（不是报错，特别难发现）。改动时别再漏掉它。
+   */
   --st-gap-xs: 4px;
   --st-gap-sm: 8px;
+  --st-gap-md: 12px;
   --st-gap-base: 16px;
   --st-gap-lg: 24px;
   --st-gap-xl: 32px;
 
-  /* ---------- 阴影：四层，从「贴着纸」到「浮起来」 ---------- */
-  --st-shadow-card: 0 1px 2px rgba(16, 42, 82, 0.04), 0 4px 14px rgba(16, 42, 82, 0.05);
-  --st-shadow-hover: 0 4px 10px rgba(16, 42, 82, 0.07), 0 12px 28px rgba(16, 42, 82, 0.1);
-  --st-shadow-float: 0 8px 24px rgba(16, 42, 82, 0.1), 0 20px 48px rgba(16, 42, 82, 0.12);
+  /* ---------- 阴影：四层，从「贴着纸」到「浮起来」 ----------
+   * v5 转浅色清新：整体【调淡】了。原来那层灰影偏重，卡片像浮在纸上；
+   * 清新系的观感靠“白卡 + 发丝边”拉开层次，阴影只需要一层几乎看不见的。
+   */
+  --st-shadow-card: 0 1px 2px rgba(16, 42, 82, 0.03), 0 6px 16px rgba(16, 42, 82, 0.04);
+  --st-shadow-hover: 0 4px 10px rgba(16, 42, 82, 0.06), 0 12px 28px rgba(16, 42, 82, 0.08);
+  --st-shadow-float: 0 8px 24px rgba(16, 42, 82, 0.08), 0 20px 48px rgba(16, 42, 82, 0.1);
   --st-shadow-glow: 0 0 0 4px var(--st-primary-glow);
   /* 带品牌色的阴影：用在渐变元素下面，比中性灰更“融进去” */
   --st-shadow-grad: 0 4px 16px rgba(66, 108, 179, 0.12);
   /* 卡片默认那层：比 --st-shadow-card 稍重一点点，白卡在浅灰底上更立得住 */
-  --st-shadow-soft: 0 4px 16px rgba(26, 42, 66, 0.07);
+  --st-shadow-soft: 0 4px 16px rgba(16, 42, 82, 0.05);
   /* 浅彩虹卡（欢迎卡）专用的彩影：用中性灰会显得“浮在白纸上” */
-  --st-shadow-rainbow: 0 6px 20px rgba(131, 113, 194, 0.14);
+  --st-shadow-rainbow: 0 6px 20px rgba(131, 113, 194, 0.12);
 
   /* ---------- 动效：统一节奏，别每个地方各写一个 0.3s ---------- */
   --st-duration-fast: 0.15s;

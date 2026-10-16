@@ -149,6 +149,7 @@ const filteredContacts = computed(() => {
   display: flex;
   flex-direction: column;
   gap: var(--st-gap-base);
+  color: var(--st-text-regular);
 }
 
 .page-head {
@@ -158,8 +159,10 @@ const filteredContacts = computed(() => {
 }
 
 .page-description {
-  margin: 12px 0 0;
+  margin: var(--st-gap-md) 0 0;
   color: var(--st-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .overview {
@@ -171,10 +174,11 @@ const filteredContacts = computed(() => {
 .overview-card {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 20px;
+  gap: var(--st-gap-base);
+  padding: var(--st-gap-base) var(--st-gap-lg);
   background: var(--st-bg-card);
-  border-radius: var(--st-radius-base);
+  border: 1px solid var(--st-border-color-hair);
+  border-radius: var(--st-radius-card);
   box-shadow: var(--st-shadow-card);
 }
 
@@ -182,26 +186,34 @@ const filteredContacts = computed(() => {
   display: grid;
   width: 44px;
   height: 44px;
-  color: var(--st-primary);
+  flex-shrink: 0;
+  color: var(--st-primary-dark);
   font-size: 20px;
   background: var(--st-primary-light);
   border-radius: var(--st-radius-base);
   place-items: center;
 }
 
+/* 第二个图标用本模块（通讯录 = 品红）的浅色做底，只占 44px 小面积。
+   v4：从 fade 提到 soft —— 44px 的小方块用 fade 档等于白底，看不出是「本模块色」。 */
 .overview-card__icon--department {
-  color: var(--st-success);
-  background: var(--st-success-light);
+  color: var(--module-ink, var(--tone-pink-deep));
+  background: var(--tone-pink-soft);
 }
 
 .overview-card__value {
-  font-size: 22px;
+  color: var(--st-text-primary);
+  font-size: 28px;
   font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 .overview-card__label {
-  margin-top: 3px;
+  margin-top: var(--st-gap-xs);
   color: var(--st-text-secondary);
+  font-size: 13px;
 }
 
 .directory {
@@ -217,22 +229,30 @@ const filteredContacts = computed(() => {
 
 .directory__head h3 {
   margin: 0;
-  font-size: 16px;
+  color: var(--st-text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
 }
 
 .directory__head p {
-  margin: 7px 0 0;
+  margin: var(--st-gap-sm) 0 0;
   color: var(--st-text-secondary);
   font-size: 13px;
+  line-height: 1.6;
 }
 
 .directory__count {
   flex-shrink: 0;
   color: var(--st-text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 .filters {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--st-gap-sm);
   margin: var(--st-gap-lg) 0 var(--st-gap-base);
 }
@@ -253,8 +273,13 @@ const filteredContacts = computed(() => {
 }
 
 .department-chip {
-  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--st-gap-xs);
+  min-height: 32px;
+  padding: var(--st-gap-xs) var(--st-gap-md);
   color: var(--st-text-regular);
+  font-size: 13px;
   cursor: pointer;
   background: var(--st-bg-page);
   border: 1px solid transparent;
@@ -266,26 +291,40 @@ const filteredContacts = computed(() => {
 }
 
 .department-chip span {
-  margin-left: 4px;
   color: var(--st-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
-.department-chip:hover,
+.department-chip:hover {
+  color: var(--st-primary);
+  background: var(--st-primary-lighter);
+  border-color: var(--st-border-color);
+}
+
 .department-chip--active {
   color: var(--st-primary);
   background: var(--st-primary-light);
   border-color: var(--st-primary-glow);
 }
 
+.department-chip:focus-visible {
+  outline: 2px solid var(--st-primary);
+  outline-offset: 2px;
+}
+
 .contact-name {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--st-gap-md);
+  color: var(--st-text-primary);
   font-weight: 600;
 }
 
+/* 字母头像：品牌浅底 + 品牌蓝字 */
 .contact-name__avatar {
-  color: var(--st-primary-dark);
+  color: var(--st-primary);
+  font-size: 15px;
+  font-weight: 600;
   background: var(--st-primary-light);
 }
 
@@ -293,21 +332,31 @@ const filteredContacts = computed(() => {
   margin: var(--st-gap-base) 0 0;
   color: var(--st-text-secondary);
   font-size: 12px;
+  line-height: 1.5;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .page-description {
+    margin-top: var(--st-gap-sm);
+  }
+
   .overview {
     gap: var(--st-gap-sm);
   }
 
   .overview-card {
-    gap: var(--st-gap-sm);
-    padding: 14px 12px;
+    gap: var(--st-gap-md);
+    padding: var(--st-gap-base);
   }
 
   .overview-card__icon {
     width: 38px;
     height: 38px;
+    font-size: 18px;
+  }
+
+  .overview-card__value {
+    font-size: 20px;
   }
 
   .directory {
@@ -316,6 +365,7 @@ const filteredContacts = computed(() => {
 
   .directory__head {
     flex-direction: column;
+    gap: var(--st-gap-xs);
   }
 
   .filters {
@@ -326,6 +376,12 @@ const filteredContacts = computed(() => {
   .filters__department {
     width: 100%;
     max-width: none;
+  }
+
+  /* 手指点得准：筛选按钮给足触摸目标 */
+  .department-chip {
+    min-height: 44px;
+    padding: var(--st-gap-sm) var(--st-gap-base);
   }
 }
 </style>
