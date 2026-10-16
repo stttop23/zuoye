@@ -40,16 +40,31 @@
  * 配色规矩：**平时是单色灰，hover 才点亮成渐变**，而且用【目标模块的色相】——
  * 点「查看公告」亮的是公告页的紫，等于提前告诉你去哪儿。
  * 一上来就四个颜色都很艳，视线会被四块抢光，反而不知道先看哪。
+ *
+ * ⚠️ 内容【按角色分】：学生要「发起请假」、管理员要「审批请假」——
+ *    一个“发”一个“批”，点错方向就是去错地方。
  */
+import { computed } from 'vue'
 import { Bell, Document, List, Refresh } from '@element-plus/icons-vue'
+import { useUserProfile } from '@/composables/userProfile'
 
 const emit = defineEmits(['navigate', 'refresh'])
 
-const actions = [
-  { path: '/notice', label: '查看公告', icon: Bell, tone: 'indigo' },
-  { path: '/todo', label: '我的待办', icon: List, tone: 'orchid' },
-  { path: '/leave', label: '发起请假', icon: Document, tone: 'violet' },
-]
+const { isAdmin } = useUserProfile()
+
+const actions = computed(() =>
+  isAdmin.value
+    ? [
+        { path: '/leave', label: '审批请假', icon: Document, tone: 'violet' },
+        { path: '/notice', label: '发布公告', icon: Bell, tone: 'indigo' },
+        { path: '/todo', label: '查看待办', icon: List, tone: 'orchid' },
+      ]
+    : [
+        { path: '/leave', label: '发起请假', icon: Document, tone: 'violet' },
+        { path: '/todo', label: '我的待办', icon: List, tone: 'orchid' },
+        { path: '/notice', label: '查看公告', icon: Bell, tone: 'indigo' },
+      ],
+)
 </script>
 
 <style scoped>

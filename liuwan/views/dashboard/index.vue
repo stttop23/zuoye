@@ -58,7 +58,7 @@ import QuickActions from './components/QuickActions.vue'
 import RecentNotices from './components/RecentNotices.vue'
 
 const router = useRouter()
-const { userName, userInitial } = useUserProfile()
+const { userName, userInitial, isAdmin } = useUserProfile()
 
 /**
  * 四个数字全部从 @/composables/appStore 里【数出来】，不再手写。
@@ -76,59 +76,106 @@ function todayStr() {
   return `${d.getFullYear()}-${mm}-${dd}`
 }
 
+/** 未完成 + 截止日已过 = 逾期。（字符串直接比大小，'YYYY-MM-DD' 比日期对象省事） */
+function isOverdue(todo, today) {
+  return todo.status !== '已完成' && todo.dueDate && todo.dueDate < today
+}
+
+/** 'YYYY-MM-DD HH:mm' → 距今天几天。解析不出来就返回 0 */
+function daysSince(dateTime, today) {
+  if (!dateTime) return 0
+  const day = String(dateTime).slice(0, 10)
+  const diff = (new Date(today) - new Date(day)) / 86400000
+  return Number.isFinite(diff) ? Math.max(0, Math.round(diff)) : 0
+}
+
+/**
+ * 四张统计卡：**内容按角色不一样**（学生看自己的，管理员看全局）。
+ *
+ * ⚠️ 为什么必须分：工作台只回答一个问题 ——「我现在该干嘛」。
+ *    这个问题的答案两个角色完全不同：学生关心“我的假批了没”，
+ *    管理员关心“有几个人在等我批”。同一排放四张一样的卡等于没答。
+ *
+ * ⚠️ 但【数字必须和点进去那个页面一致】，否则就是老毛病（首页和页面对不上）：
+ *    - 待办页**不按人过滤**（两边都看到全部）→ 卡片给总数
+ *    - 请假页【按人过滤】（学生只看自己的，管理员看全部）→ 卡片必须跟着分
+ *      以前学生首页写 4、点进去只有 1 行，就是这个不一致。
+ *
+ * tone = 卡片色相（只为好看，不跟模块色绑定）
+ * sub  = 底下一行小字，⚠️ 必须是从数据里算出来的真数字，宁可写“无逾期”也别编
+ * path = 点这张卡跳到哪儿
+ */
 const stats = computed(() => {
   const today = todayStr()
-  const overdue = todos.value.filter(
-    (t) => t.status !== '已完成' && t.dueDate && t.dueDate < today,
-  ).length
-  const pending = leaveRecords.value.filter((r) => r.status === '待审批').length
+  const overdue = todos.value.filter((t) => isOverdue(t, today)).length
+  const allPending = leaveRecords.value.filter((r) => r.status === '待审批')
+  const mine = leaveRecords.value.filter((r) => r.name === userName.value)
+  const myPending = mine.filter((r) => r.status === '待审批').length
   const topped = notices.value.filter((n) => n.top).length
   const departments = new Set(DIRECTORY_CONTACTS.map((c) => c.department)).size
 
-  /*
-   * tone = 卡片色相。四张卡从左到右扫过彩虹（青→蓝紫→紫→粉），
-   * 这只是为了好看；它【不】跟模块色绑定 ——
-   * 卡片排在同一行，按模块配会变成三张紫的挤在一起。
-   *
-   * sub = 卡片底下那行小字。⚠️ 必须是【从数据里算出来的】真数字：
-   *   以前这里放过“较昨日 +12%”这种占位文案，那属于造假，一律不要。
-   *   算出来是 0 就老实说 0（比如“无逾期”）。
-   *
-   * path = 点这张卡跳到哪儿。卡是可点的（整张卡都是点击区）。
-   */
+  /* 公告 / 成员这两张卡两边一样，先拼好，免得各写一遍 */
+  const noticeCard = {
+    label: '公告数量',
+    value: summary.value.notice,
+    icon: Warning,
+    tone: 'violet',
+    sub: topped ? `${topped} 条置顶` : '无置顶公告',
+    path: '/notice',
+  }
+  const memberCard = {
+    label: '小组成员',
+    value: summary.value.member,
+    icon: User,
+    tone: 'pink',
+    sub: `分属 ${departments} 个部门`,
+    path: '/contacts',
+  }
+  const todoCard = {
+    label: '待办事项',
+    value: summary.value.todo,
+    icon: List,
+    tone: 'teal',
+    sub: overdue ? `其中 ${overdue} 条已逾期` : '暂无逾期',
+    path: '/todo',
+  }
+
+  if (isAdmin.value) {
+    /*
+     * 管理员：第一张卡必须是「待审批」。
+     * 他打开工作台最想知道的就是“有没有人在等我”，而不是自己有几条待办。
+     */
+    const oldest = allPending.length
+      ? Math.max(...allPending.map((r) => daysSince(r.applyTime, today)))
+      : 0
+    return [
+      {
+        label: '待审批',
+        value: allPending.length,
+        icon: Document,
+        tone: 'indigo',
+        sub: allPending.length ? `最早的 ${oldest} 天前提交` : '目前没有待审批',
+        path: '/leave',
+      },
+      todoCard,
+      noticeCard,
+      memberCard,
+    ]
+  }
+
+  /* 学生：请假只能看自己的（跟请假页一致），所以是「我的请假」不是「请假申请」 */
   return [
+    todoCard,
     {
-      label: '待办事项',
-      value: summary.value.todo,
-      icon: List,
-      tone: 'teal',
-      sub: overdue ? `其中 ${overdue} 条已逾期` : '暂无逾期',
-      path: '/todo',
-    },
-    {
-      label: '请假申请',
-      value: summary.value.leave,
+      label: '我的请假',
+      value: mine.length,
       icon: Document,
       tone: 'indigo',
-      sub: pending ? `${pending} 条待审批` : '全部已处理',
+      sub: myPending ? `${myPending} 条待审批` : '全部已处理',
       path: '/leave',
     },
-    {
-      label: '公告数量',
-      value: summary.value.notice,
-      icon: Warning,
-      tone: 'violet',
-      sub: topped ? `${topped} 条置顶` : '无置顶公告',
-      path: '/notice',
-    },
-    {
-      label: '小组成员',
-      value: summary.value.member,
-      icon: User,
-      tone: 'pink',
-      sub: `分属 ${departments} 个部门`,
-      path: '/contacts',
-    },
+    noticeCard,
+    memberCard,
   ]
 })
 
