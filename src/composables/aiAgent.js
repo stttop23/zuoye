@@ -158,6 +158,10 @@ const COMMAND_ROUTES = {
   switch_role: { target: 'system', page: null },
   rename_user: { target: 'system', page: null },
   toggle_setting: { target: 'system', page: null },
+  // 群聊：三个动作都交给群聊页接（页面里 watch pendingCommand 的那段）
+  chat_open: { target: 'chat', page: '/chat' },
+  chat_draft: { target: 'chat', page: '/chat' },
+  chat_send: { target: 'chat', page: '/chat' },
 }
 
 /**
@@ -291,6 +295,63 @@ function findDates(text, today) {
   return dates
 }
 
+/**
+ * 群聊：从一句话里拆出「干什么 / 发去哪 / 说什么」。
+ * 跟 server/app.py 的 local_chat 【一对一对齐】—— 两边行为不一样的话，
+ * 线上和断网后表现就会不一致，这种“有时行有时不行”最难查。
+ *
+ * ⚠️ 措辞决定动作：「帮我写一句…」只填草稿，「发一句…」才真发。
+ * ⚠️ 抽不出正文就返回 null，绝不能把整句话当消息发出去。
+ */
+function localChat(text) {
+  if (!text) return null
+
+  const sendWords = /发出去|发送|发给|发到|发一句|发一条|发个|发句/.test(text)
+  const draftWords = /帮我写|起草|拟一?句|写一?句|写条|填一?句/.test(text)
+  const openWords = /打开|进入|切到|换到/.test(text)
+  // 【不能】用「text 里有『群』字」当门槛：「项目讨论组」里面没有「群」字
+  if (!sendWords && !draftWords && !openWords) return null
+
+  // 群名：形如「XX群 / XX讨论组 / XX小组」。
+  // ⚠️ 前面的 {2,12} 是贪心的：「帮我在开发1群发一句」会被整个吃成「帮我在开发1群」；
+  //    「打开群聊」则会吃成「打开群」。所以匹配完要把动词/代词前缀削掉，
+  //    削完不足两个字就当「没说群名」。
+  let groupName = ''
+  const groupMatch = text.match(/([\u4e00-\u9fa5A-Za-z0-9]{2,12}(?:群|讨论组|小组))/)
+  if (groupMatch) {
+    const raw = groupMatch[1].replace(
+      /^(帮我|给我|帮忙|麻烦|请|打开|进入|切到|换到|看看|看|在|到|去|一下|这个|那个)+/,
+      '',
+    )
+    if (raw.length >= 2) groupName = raw
+  }
+
+  // 正文依次找：①「发/写+量词+正文」 ②引号里 ③冒号/逗号后面
+  let content = ''
+  const tail = text.match(/(?:发|写|填)(?:一?[句条个])[:：,，]?\s*([^。！!？?]{1,120})/)
+  if (tail) content = tail[1]
+  else {
+    const quoted = text.match(/[「『"'“]([^」』"'”]{1,120})[」』"'”]/)
+    if (quoted) content = quoted[1]
+    else {
+      const after = text.match(/[：:，,]\s*([^。！!？?]{1,120})/)
+      if (after) content = after[1]
+    }
+  }
+  content = content.trim()
+
+  if (!content) {
+    if (openWords && groupName) return { type: 'chat_open', groupName }
+    return null
+  }
+
+  return {
+    type: draftWords && !sendWords ? 'chat_draft' : 'chat_send',
+    text: content,
+    groupName,
+  }
+}
+
 function localFallback(text, page) {
   const today = new Date()
 
@@ -359,6 +420,23 @@ function localFallback(text, page) {
     if (text.includes(name)) {
       return { reply: `【本地兜底】带你到「${name}」。`, actions: [{ type: 'navigate', path }] }
     }
+  }
+
+  // 群聊：写 / 发 / 切群。放在跳页之后 —— 「打开群聊」已经在上面的页面表里接住了。
+  const chat = localChat(text)
+  if (chat) {
+    const target = chat.groupName ? `「${chat.groupName}」` : '当前群'
+    if (chat.type === 'chat_open') {
+      return { reply: `【本地兜底】带你到${target}。`, actions: [chat] }
+    }
+    if (chat.type === 'chat_draft') {
+      return {
+        reply: `【本地兜底】草稿已写进${target}的输入框，看一眼再按发送。`,
+        actions: [chat],
+      }
+    }
+    // send 只说「正在发」—— 真正发没发出去由页面说了算，不能替它宣布成功
+    return { reply: `【本地兜底】正在帮你发到${target}。`, actions: [chat] }
   }
 
   return { reply: '后端没连上，本地兜底也认不出这句。先把 server/app.py 跑起来试试。', actions: [] }

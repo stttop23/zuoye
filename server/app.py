@@ -115,6 +115,38 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "chat_action",
+            "description": (
+                "操作群聊界面。必须根据用户的措辞选 action：\n"
+                "- 用户说「帮我写一句 / 起草 / 拟一句」→ action=draft（只把草稿填进输入框，不发送）\n"
+                "- 用户说「发 / 发送 / 发出去 / 发给」→ action=send（真的发出去）\n"
+                "- 只是想看某个群 → action=open\n"
+                "分不清就用 draft（宁可只填不发，消息发出去撤不回来）。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["open", "draft", "send"],
+                        "description": "open=只切到那个群；draft=只填草稿；send=真发出去",
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "要写/要发的内容。用用户的原话，不要替他润色。draft / send 必填",
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "群名称，可省略；省略则用当前打开的群",
+                    },
+                },
+                "required": ["action"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "go_to_page",
             "description": "帮用户跳转到系统里的某个页面",
             "parameters": {
@@ -439,7 +471,8 @@ SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用
 ACTION_HINT_RE = re.compile(
     r"请假|病假|事假|年假|休假|待办|任务|事项|公告|通知|新建|添加|建个|加个|打卡|签到|"
     r"打开|进入|跳|帮我|查一|看一下|有哪些|多少|几条|批了吗|通过了吗|逾期|"
-    r"撤销|审批|驳回|完成|做完了|删掉|删除|改成|搜一下|看看|切到|换回|叫我|关掉"
+    r"撤销|审批|驳回|完成|做完了|删掉|删除|改成|搜一下|看看|切到|换回|叫我|关掉|"
+    r"群聊|群里|群发|发言|发一句|发条|写一句|起草"
 )
 
 NO_TOOL_MARK = "无需工具"
@@ -845,6 +878,98 @@ def clean_todo(args):
     return fields
 
 
+# 群聊动作（三个），体检时要一起管
+CHAT_ACTIONS = ("chat_open", "chat_draft", "chat_send")
+
+# 「发」类的措辞：出现这些词，就是用户要求真发出去
+CHAT_SEND_RE = re.compile(r"发出去|发送|发给|发到|发一句|发一条|发个|发句")
+# 「写」类的措辞：只要求写草稿
+CHAT_DRAFT_RE = re.compile(r"帮我写|起草|拟一?句|写一?句|写条|填一?句")
+
+
+def _normalize_for_compare(text):
+    """去掉空白和标点，只留下“字”。比对“这句话是不是用户说的”时用。"""
+    return re.sub(r"[\s。！!？?，,、：:；;\"'「」『』]+", "", text or "")
+
+
+def enforce_chat(actions, user_text):
+    """
+    群聊动作的事后体检。返回 (新 actions, 需要覆盖的回复或 None)。
+
+    ⚠️⚠️ 两道都是实测出来的，不是防患于未然：
+
+    1. 【正文必须是用户的原话】
+       小模型会凭空编。实测「在群里发消息」，它编出了
+       正文「大家好，今天天气不错哦！」和一个【不存在的】群名「班级群」。
+       消息发出去撤不回来，而且是拿用户的名义发的 —— 对不上就整条丢掉，宁可什么都不做。
+       （比对前两边都去标点空白，「明天开会」和「明天开会。」要算一样。）
+
+    2. 【draft / send 由用户的措辞决定，不由模型决定】
+       实测 5 句里 5 句都被判成 draft，连「在开发1群发一句…」也是 ——
+       小模型分不清「写一句」和「发一句」。
+       所以：说了发就是 send，说了写就是 draft，两个都出现按【发】算。
+
+    3. 【「打开 XX 群」要真的切过去】
+       模型往往只给一个 navigate(/chat)，不会去调 chat_action(open)，
+       于是回复说着「已经帮你切到项目讨论组了」，其实只打开了群聊页。
+       这里用 local_chat 把它补上。
+
+    返回 (新 actions, 要覆盖的回复或 None)。
+    """
+    user_norm = _normalize_for_compare(user_text)
+    wants_send = bool(CHAT_SEND_RE.search(user_text or ""))
+    wants_draft = bool(CHAT_DRAFT_RE.search(user_text or ""))
+
+    out = []
+    flipped_to_send = False
+    dropped = 0
+    for action in actions or []:
+        kind = action.get("type")
+        if kind not in CHAT_ACTIONS:
+            out.append(action)
+            continue
+        if kind == "chat_open":
+            out.append(action)
+            continue
+
+        text = (action.get("text") or "").strip()
+        if not text or _normalize_for_compare(text) not in user_norm:
+            # 模型自己编的正文 → 丢掉
+            dropped += 1
+            continue
+
+        # ⚠️ 群名也要验来源：实测用户只说「帮我写一句明天下午三点开会」，
+        #    根本没提群，模型却自己编了个「学生工作群」塞进 group。
+        #    编出来的群名会被前端挡掉（那个守卫是对的），但回复却会说
+        #    「已经拟好了」—— 用户看到的是“说了做了、其实什么都没做”。
+        #    所以只要群名不是用户原话里的，就丢掉群名（动作保留，发到当前群去）。
+        group = (action.get("groupName") or "").strip()
+        if group and _normalize_for_compare(group) not in user_norm:
+            action = {**action, "groupName": ""}
+
+        if wants_send:
+            if kind != "chat_send":
+                flipped_to_send = True
+            action = {**action, "type": "chat_send"}
+        elif wants_draft:
+            action = {**action, "type": "chat_draft"}
+        out.append(action)
+
+    # 「打开 XX 群」：补上切群那一步（见 docstring 第 3 条）
+    if not any(item.get("type") == "chat_open" for item in out):
+        local = local_chat(user_text)
+        if local and local["type"] == "chat_open":
+            out.append(local)
+
+    if dropped:
+        # 动作丢了，回复也得换掉 —— 不然它会念着编的内容问「发出去吗」
+        return out, "这句我没听清要发什么内容，再说具体一点？"
+    if flipped_to_send:
+        # 模型那句「你可以点发送按钮」和刚改的动作矛盾，一并覆盖
+        return out, "正在帮你发出去。"
+    return out, None
+
+
 def action_from_tool(name, args):
     if name == "go_to_page":
         path = args.get("path")
@@ -890,6 +1015,25 @@ def action_from_tool(name, args):
         setting = args.get("name")
         if setting in ("界面动效", "未读红点") and isinstance(args.get("value"), bool):
             return {"type": "toggle_setting", "name": setting, "value": args["value"]}
+        return None
+    if name == "chat_action":
+        # 群聊：一个工具 + 一个 action 枚举。
+        # ⚠️ 为什么不做成三个独立工具（open_chat / draft_chat / send_chat）：
+        #    小模型在「三个长得很像的工具」之间选错的概率很高（本项目踩过：
+        #    工具从 7 个加到 15 个之后，选择准确率明显下降）。
+        #    同一件事的几个模式压成一个 enum 参数，表征上更稳。
+        action = args.get("action")
+        text = (args.get("text") or "").strip()
+        group = (args.get("group") or "").strip()
+        if action == "open":
+            return {"type": "chat_open", "groupName": group[:20]}
+        # draft / send 必须有内容 —— 没有内容就不是一个动作，直接丢掉
+        if action in ("draft", "send") and text:
+            return {
+                "type": "chat_draft" if action == "draft" else "chat_send",
+                "text": text[:200],
+                "groupName": group[:20],
+            }
         return None
     return None
 
@@ -1290,6 +1434,77 @@ def local_todo(text, today):
     return {"type": "fill", "target": "todo", "fields": fields}, "本地规则解析了待办标题，打开弹窗确认一下。"
 
 
+def local_chat(text):
+    """
+    群聊：从一句话里拆出「干什么 / 发去哪 / 说什么」。
+
+    ⚠️ 措辞决定动作，必须严格区分：
+        「帮我写一句…」→ chat_draft（只填草稿，用户自己按发送）
+        「发一句…」「发出去」→ chat_send（真发）
+      两个词都出现（「写一句…然后发出去」）→ 按发算，因为用户明确说了发。
+
+    ⚠️ 抽不出正文就返回 None，交给上层说「认不出」。
+      绝不能把整句话当消息发出去 —— 群消息发出去撤不回来，宁可不做。
+      正因如此，「发消息」这种没带正文的说法也要落到 None 上。
+
+    返回 None 或 {type, text, groupName}
+    """
+    if not text:
+        return None
+
+    send_words = re.search(r"发出去|发送|发给|发到|发一句|发一条|发个|发句", text)
+    draft_words = re.search(r"帮我写|起草|拟一?句|写一?句|写条|填一?句", text)
+    open_words = re.search(r"打开|进入|切到|换到", text)
+    # 【不能】用「text 里有『群』字」当门槛：「项目讨论组」里面没有「群」字，
+    # 那样会直接错过「打开项目讨论组」。真正的门槛在下面的群名提取。
+    if not (send_words or draft_words or open_words):
+        return None
+
+    # 群名：形如「XX群 / XX讨论组 / XX小组」。
+    # ⚠️ 前面的 {2,12} 是贪心的：「帮我在开发1群发一句」会被整个吃成「帮我在开发1群」；
+    #    「打开群聊」则会吃成「打开群」（把动词当成了群名）。
+    #    所以匹配完要把常见的动词/代词前缀削掉；削完不足两个字就当「没说群名」。
+    group = ""
+    group_match = re.search(r"([\u4e00-\u9fa5A-Za-z0-9]{2,12}(?:群|讨论组|小组))", text)
+    if group_match:
+        raw = re.sub(
+            r"^(帮我|给我|帮忙|麻烦|请|打开|进入|切到|换到|看看|看|在|到|去|一下|这个|那个)+",
+            "",
+            group_match.group(1),
+        )
+        if len(raw) >= 2:
+            group = raw
+
+    # 正文按这个顺序找，越靠前越可靠：
+    #   1. 「发/写 + 量词 + 正文」—— 必须带量词（一句/一条/个）。
+    #      这样「在群里发消息」抽不出正文，会老实落到 None，
+    #      而不是把「消息」两个字发出去。
+    #   2. 引号里的
+    #   3. 冒号/逗号后面的
+    content = ""
+    tail = re.search(r"(?:发|写|填)(?:一?[句条个])[:：,，]?\s*([^。！!？?]{1,120})", text)
+    if tail:
+        content = tail.group(1)
+    else:
+        quoted = re.search(r"[「『\"'\u201c]([^」』\"'\u201d]{1,120})[」』\"'\u201d]", text)
+        if quoted:
+            content = quoted.group(1)
+        else:
+            after = re.search(r"[：:，,]\s*([^。！!？?]{1,120})", text)
+            if after:
+                content = after.group(1)
+    content = content.strip()
+
+    if not content:
+        # 没有正文 → 只可能是「打开某个群」
+        if open_words and group:
+            return {"type": "chat_open", "groupName": group}
+        return None
+
+    action = "chat_draft" if (draft_words and not send_words) else "chat_send"
+    return {"type": action, "text": content, "groupName": group}
+
+
 def local_parse(text, page, snapshot=None):
     """本地兜底解析，覆盖文档里写的那些说法，解析不了就让用户自己填。"""
     today = date.today()
@@ -1349,6 +1564,17 @@ def local_parse(text, page, snapshot=None):
     for path, name in PAGES.items():
         if name in text and re.search(r"打开|去|跳|换|看", text):
             return [{"type": "navigate", "path": path}], f"带你到「{name}」。"
+
+    chat = local_chat(text)
+    if chat:
+        # 回复口径：send 只说「正在帮你发」—— 真正发没发出去由浏览器说了算
+        # （群可能已经被切走、正文可能被清空），不能替它宣布成功。
+        target = f"「{chat['groupName']}」" if chat.get("groupName") else "当前群"
+        if chat["type"] == "chat_open":
+            return [chat], f"带你到{target}。"
+        if chat["type"] == "chat_draft":
+            return [chat], f"草稿已写进{target}的输入框，看一眼再按发送。"
+        return [chat], f"正在帮你发到{target}。"
 
     if re.search(r"请假|病假|事假|年假|休假|休息", text):
         # 撤销自己的申请：要在「填表」之前判
@@ -1800,6 +2026,10 @@ def chat():
             reply, actions = run_agent(history, page, user, provider, snapshot)
             # 日期一律用我们自己的解析结果校对一遍，见 reconcile_dates 的说明
             actions = [reconcile_dates(action, last_user_text) for action in actions]
+            # 群聊动作体检：正文必须是用户原话（防编造）+ 措辞决定写还是发
+            actions, chat_reply = enforce_chat(actions, last_user_text)
+            if chat_reply:
+                reply = chat_reply
             # 「打开某页面」这类能写死的意图，别让小模型去猜
             reply, actions = enforce_navigation(reply, actions, last_user_text)
             # 模型没动手但用户确实在下命令 —— 本地规则补上（见函数注释里的实测）

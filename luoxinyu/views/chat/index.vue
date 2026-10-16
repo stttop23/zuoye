@@ -126,8 +126,10 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { ElementPlus, InfoFilled, MoreFilled, Plus, Promotion } from '@element-plus/icons-vue'
+import { consumeCommand, pendingCommand } from '@/composables/aiAgent'
 
 const currentGroupId = ref('dev')
 const draftMessage = ref('')
@@ -257,6 +259,64 @@ function selectGroup(groupId) {
   const group = groups.value.find((item) => item.id === groupId)
   if (group) group.unread = 0
 }
+
+/*
+ * ---- AI 助手说「帮我在群里发一句…」时，真正动手的是这里 ----
+ *
+ * 群名和群列表只有这个组件知道（数据在组件内部），所以【匹配也在这里做】——
+ * 服务端只递一个名字过来，不维护第二份群名表（这个项目吃过“同一份数据写两遍”的亏）。
+ *
+ * immediate 是为了处理「AI 先跳页再操作」：跳过来时暗号可能已经放好了。
+ */
+function findGroupByName(name) {
+  if (!name) return null
+  const key = String(name).trim()
+  return (
+    groups.value.find((group) => group.name === key) ??
+    groups.value.find((group) => group.name.includes(key) || key.includes(group.name)) ??
+    null
+  )
+}
+
+watch(
+  pendingCommand,
+  async () => {
+    const command = consumeCommand('chat')
+    if (!command) return
+
+    const group = findGroupByName(command.groupName)
+
+    /*
+     * ⚠️ AI 说了群名、这里却匹配不到 —— 【什么都不做】，不要退而求其次发到当前群。
+     *    发错群比不发更糟：消息发出去撤不回来，而且是拿用户的名义发的。
+     */
+    if (command.groupName && !group) {
+      ElMessage.warning(`没找到「${command.groupName}」这个群，先没动`)
+      return
+    }
+
+    if (group && group.id !== currentGroupId.value) selectGroup(group.id)
+
+    // 只是想看某个群，不发消息
+    if (command.type === 'chat_open') return
+
+    const text = String(command.text ?? '').trim()
+    if (!text) return
+
+    draftMessage.value = text
+    await nextTick()
+
+    if (command.type === 'chat_draft') {
+      // 只说「写」就不发 —— 消息发出去撤不回来，最后一步留给用户按
+      ElMessage.success('草稿已写好，改完按发送')
+      return
+    }
+
+    await sendMessage()
+    ElMessage.success('已发送')
+  },
+  { immediate: true },
+)
 
 async function sendMessage() {
   const content = draftMessage.value.trim()
