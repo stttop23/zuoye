@@ -27,17 +27,13 @@ import AiChatPanel from '@/components/AiChatPanel.vue'
 .assistant-page {
   display: flex;
   flex-direction: column;
-  gap: var(--st-gap-base);
+  gap: var(--st-page-gap);
   /* 撑满内容区，聊天区才能自己滚动，而不是整页滚 */
   height: 100%;
 }
 
-.page-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--st-text-primary);
-}
+/* 标题的字号/字重/颜色全在 global.css 的 .page-title 里，这里不再重复一遍
+   （重复写的话，以后全局改标题样式，这一页会顽固地不跟着变） */
 
 .assistant-card {
   flex: 1;

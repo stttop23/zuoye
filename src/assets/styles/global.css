@@ -296,15 +296,30 @@ a {
   --el-border-radius-small: 6px;
 }
 
-/* 表格悬停：用 EP 自己的变量改，不去覆写它的样式，以后升级也不怕 */
+/* 表格：全用 EP 自己的变量改，不去覆写它的内部样式，以后升级也不怕。
+ * ⚠️ 这段和下面「视觉层次」里曾经各写了一份 .el-table，
+ *    --el-table-header-bg-color 被赋了两次（前一份是死代码），已合并到这里。
+ */
 .el-table {
   --el-table-row-hover-bg-color: var(--st-primary-lighter);
-  --el-table-header-bg-color: #fafbfd;
+  /* 表头底色跟着【当前模块的色相】走 —— 每页不同，这就是「按模块分层」 */
+  --el-table-header-bg-color: var(--module-fade, #f7faff);
+  --el-table-header-text-color: var(--st-text-regular);
   --el-table-border-color: var(--st-border-color-hair);
+  /* ⚠️ 别在这里写 --el-table-row-height：EP 没有这个变量，
+     写了也不会生效（而 var() 取不到值的坑又特别难查）。
+     要调行高得改 .el-table__cell 的 padding。 */
 }
 
-/* 卡片：阴影和位移都平滑过渡，不再是一下子跳过去 */
+/* 卡片：白底 + 发丝边 + 统一圆角，阴影/位移/边框都平滑过渡。
+ * ⚠️ 圆角必须显式写成 --st-radius-card：EP 默认是 8px，
+ *    而首页的统计卡是 12px —— 不写的话每页圆角都不一样。
+ */
 .el-card {
+  --el-card-padding: 18px 20px;
+  --el-card-border-color: var(--st-border-color-hair);
+  border: 1px solid var(--st-border-color-hair);
+  border-radius: var(--st-radius-card);
   transition:
     box-shadow var(--st-duration-base) var(--st-ease),
     transform var(--st-duration-base) var(--st-ease),
@@ -372,29 +387,34 @@ a {
    ------------------------------------------------------------
    以前好几个页面写的是 border:none + shadow="never"，
    白卡片贴在浅灰底上几乎看不出边界，整页就平了。
-   这里统一给一层发丝边框 + 柔影，所有页面一起变。
+   边框和圆角已经在上面的 .el-card 里统一给好了（见「表格 / 卡片」那段），
+   这里只补「shadow="never" 的卡也要有柔影」这一件事。
    ============================================================ */
-.el-card {
-  border: 1px solid var(--st-border-color-hair);
-}
-
-/* 和 EP 自带的 .is-never-shadow 同权重，靠引入顺序盖住它（我们的 CSS 在后面） */
 .el-card.is-never-shadow {
   box-shadow: var(--st-shadow-card);
 }
 
-/* 卡片头部：一层极淡的渐变 + 发丝分割线，比纯白多一点层次 */
+/* 卡片头部：纯白 + 发丝分割线（分割线 EP 自带，这里对一下颜色）。
+ * 原来这里铺了一层极淡的竖向渐变（#fafcff → #fff），属于多余的装饰；
+ * 而且不带头的卡（比如统计卡）和带头的卡放一起，看着不像一套。
+ * 留着渐变的话，浅色清新那套「白卡 + 发丝边」会显脏。
+ */
 .el-card__header {
-  padding: 14px 18px;
-  background: linear-gradient(180deg, #fafcff 0%, #ffffff 100%);
+  padding: 15px 20px;
+  background: var(--st-bg-card);
 }
 
-/* 区块标题左边加一根渐变小竖条 —— 所有页面通用，颜色跟着本模块走 */
+/* 区块标题：所有页面统一在这里，别每页各写一遍 15px/600（写多了就会漂） */
 .section__title {
   position: relative;
   padding-left: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--st-text-primary);
 }
 
+/* 区块标题左边那根渐变小竖条 —— 颜色跟着本模块走（尺寸/字重见上面那条） */
 .section__title::before {
   content: '';
   position: absolute;
@@ -405,13 +425,6 @@ a {
   background: var(--module-grad, var(--st-gradient-brand));
   border-radius: var(--st-radius-pill);
   transform: translateY(-50%);
-}
-
-/* 表头再明显一点，不然和数据行分不开。
-   底色跟着【当前模块的色相】走 —— 每页的表头颜色不同，这就是“按模块分层”。 */
-.el-table {
-  --el-table-header-bg-color: var(--module-fade, #f7faff);
-  --el-table-header-text-color: #4b5563;
 }
 
 /* ============================================================

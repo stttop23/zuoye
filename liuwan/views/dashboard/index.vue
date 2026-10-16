@@ -162,8 +162,7 @@ function onRefresh() {
 .dashboard {
   display: flex;
   flex-direction: column;
-  /* 20px 而不是 16px：卡片之间留够气，整页看起来才“顺”，不会挤成一堆 */
-  gap: 20px;
+  gap: var(--st-page-gap);
 }
 
 /* ---------- 顶部欢迎卡：全页唯一一张铺渐变的卡 ----------

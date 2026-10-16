@@ -527,7 +527,7 @@ async function deleteTodo(todo) {
 .todo-page {
   display: flex;
   flex-direction: column;
-  gap: var(--st-gap-base);
+  gap: var(--st-page-gap);
   min-width: 0;
 }
 
@@ -722,11 +722,14 @@ async function deleteTodo(todo) {
   gap: 6px;
 }
 
+/* 嵌在白卡里的凹底面板。用 --st-bg-sunken 而不是 --st-bg-page：
+ * 后者是“页面底”的语义，数值也浅一档，放在白卡里几乎看不出是一块。
+ * 圆角用 radius-base（比外层的卡片小一档）—— 嵌套圆角本来就该小一点。 */
 .day-schedule {
   min-width: 0;
   padding: 18px;
   border-radius: var(--st-radius-base);
-  background: var(--st-bg-page);
+  background: var(--st-bg-sunken);
 }
 
 .schedule-list {

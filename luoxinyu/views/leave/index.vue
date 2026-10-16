@@ -204,7 +204,7 @@ watch(
 .leave {
   display: flex;
   flex-direction: column;
-  gap: var(--st-gap-base);
+  gap: var(--st-page-gap);
 }
 
 .page-head {
