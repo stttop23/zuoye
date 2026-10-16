@@ -156,9 +156,18 @@ async function doCheckIn() {
     place,
   }
 
-  // 定位失败也给打上，只是提醒一句——总不能因为没定位就不让人打卡
-  if (place.error) ElMessage.warning(`打卡成功（${place.error}）`)
-  else ElMessage.success('打卡成功')
+  // 定位失败也给打上，只是提醒一句——总不能因为没定位就不让人打卡。
+  // ⚠️ 提示要把「为什么没地名」和【怎么办】一起说清楚：
+  //    用户明明配了高德 key、后端也正常，却只看到「定位超时」时，
+  //    第一反应是代码坏了。实测（2026-10-16）这条链路是通的：
+  //    喂真坐标 → 逆地理返回 poi「鸡爪山」→ 页面显示「鸡爪山」。
+  //    拿不到定位只可能是浏览器侧：Chrome 在国内定位常失败（依赖 Google 服务），
+  //    Edge 正常；另外用 IP 直访（不是 localhost / https）会被浏览器直接拒绝定位。
+  if (place.error) {
+    ElMessage.warning(`打卡成功，但没取到位置：${place.error}。用 Edge 打开 localhost 可显示地名`)
+  } else {
+    ElMessage.success('打卡成功')
+  }
 }
 
 function undo() {

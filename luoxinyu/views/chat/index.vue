@@ -13,7 +13,7 @@
 
       <el-scrollbar class="group-scroll">
         <button
-          v-for="group in groups"
+          v-for="group in sortedGroups"
           :key="group.id"
           type="button"
           class="group-item"
@@ -235,6 +235,22 @@ const groups = ref([
 const currentGroup = computed(
   () => groups.value.find((group) => group.id === currentGroupId.value) ?? groups.value[0],
 )
+
+/**
+ * 会话列表的显示顺序：**有未读的排到最上面**。
+ *
+ * ⚠️ 两个坑（都试过）：
+ *   1. 不能直接 sort —— groups 里的 time 是「10:42 / 昨天 / 周一」这种展示文案，
+ *      字符串排不了序。数据本身就是按时间倒序摆的，所以只做「稳定分区」：
+ *      未读的一段 + 已读的一段，各自保持原相对顺序。
+ *   2. 光按 unread 排会「一跳」：点开一个群就把它标已读（selectGroup），
+ *      它立刻掉到下面去 —— 你正看着的那个会话突然跑了。
+ *      所以把「当前选中的」也算进前面那一段，看着的会话就不会跳走。
+ */
+const sortedGroups = computed(() => {
+  const sticky = (g) => g.unread > 0 || g.id === currentGroupId.value
+  return [...groups.value.filter(sticky), ...groups.value.filter((g) => !sticky(g))]
+})
 
 function selectGroup(groupId) {
   currentGroupId.value = groupId

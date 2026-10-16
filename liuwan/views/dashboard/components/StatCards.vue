@@ -5,6 +5,12 @@
         shadow="never"
         class="stat-card st-fade-up"
         :class="[`st-delay-${index + 1}`, `tone--${item.tone}`]"
+        role="button"
+        tabindex="0"
+        :aria-label="`查看${item.label}`"
+        @click="emit('navigate', item.path)"
+        @keydown.enter.prevent="emit('navigate', item.path)"
+        @keydown.space.prevent="emit('navigate', item.path)"
       >
         <div class="stat-card__top">
           <span class="stat-card__label">{{ item.label }}</span>
@@ -17,7 +23,11 @@
           <CountUp :value="item.value" />
         </div>
 
-        <div class="stat-card__sub">{{ item.sub }}</div>
+        <div class="stat-card__sub">
+          <span>{{ item.sub }}</span>
+          <!-- 一个箭头当“可以点”的暗示 —— 比写「点击查看」省字 -->
+          <el-icon class="stat-card__arrow" :size="12"><ArrowRight /></el-icon>
+        </div>
       </el-card>
     </el-col>
   </el-row>
@@ -44,11 +54,18 @@
  *   - 卡片悬停抬升 + 阴影变深 + 图标轻转
  *   - 四张卡错峰入场（.st-delay-N）
  */
+import { ArrowRight } from '@element-plus/icons-vue'
 import CountUp from '@/components/CountUp.vue'
 
+/*
+ * 纯展示组件：只负责“好看 + 可点”，跳到哪儿由父级决定。
+ * 所以这里 emit 而不是自己 router.push —— 和 QuickActions 保持同一套写法。
+ */
 defineProps({
   stats: { type: Array, required: true },
 })
+
+const emit = defineEmits(['navigate'])
 </script>
 
 <style scoped>
@@ -103,6 +120,20 @@ defineProps({
   box-shadow: var(--st-shadow-hover);
 }
 
+/* 整张卡可点，所以给个手型；键盘 Tab 进来时也要看得见 */
+.stat-card {
+  cursor: pointer;
+}
+
+.stat-card:focus-visible {
+  outline: 2px solid var(--card-line, var(--st-primary));
+  outline-offset: 2px;
+}
+
+.stat-card:active {
+  transform: translateY(-1px);
+}
+
 /* 第一行：标签在左、图标在右 */
 .stat-card__top {
   display: flex;
@@ -153,10 +184,29 @@ defineProps({
 
 /* 底下那行真数字：一条细分割线隔开，当“脚注”用 */
 .stat-card__sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   margin-top: 12px;
   padding-top: 10px;
   font-size: 12px;
   color: var(--st-text-secondary);
   border-top: 1px solid var(--st-border-color-hair);
+}
+
+/* 箭头平时很淡，悬停时往右走一步 + 上色 —— 不写文字也能看出“能点” */
+.stat-card__arrow {
+  flex-shrink: 0;
+  color: var(--card-ink, var(--st-text-secondary));
+  opacity: 0.45;
+  transition:
+    opacity var(--st-duration-base) var(--st-ease),
+    transform var(--st-duration-base) var(--st-ease);
+}
+
+.stat-card:hover .stat-card__arrow {
+  opacity: 1;
+  transform: translateX(3px);
 }
 </style>

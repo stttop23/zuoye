@@ -344,12 +344,17 @@ function localFallback(text, page) {
     return { reply: '【本地兜底】正在帮你打卡。', actions: [{ type: 'checkin' }] }
   }
 
+  // ⚠️ 这张表要和后端 server/app.py 里的 PAGES 【保持一致】：
+  //    后端那张是模型能选的 enum，这张是后端挂了时的本地兜底。
+  //    只改一边的后果：AI 能跳、断网后跳不了（或者反过来）。
   for (const [path, name] of Object.entries({
     '/dashboard': '工作台',
     '/notice': '公告通知',
     '/leave': '请假申请',
     '/todo': '待办事项',
     '/contacts': '通讯录',
+    '/chat': '群聊',
+    '/assistant': 'AI 助手',
   })) {
     if (text.includes(name)) {
       return { reply: `【本地兜底】带你到「${name}」。`, actions: [{ type: 'navigate', path }] }

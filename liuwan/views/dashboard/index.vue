@@ -19,7 +19,7 @@
     </el-card>
 
     <!-- 下面几块挨个淡入上移，带一点节奏（.st-delay-N 在 global.css 里） -->
-    <StatCards :stats="stats" />
+    <StatCards :stats="stats" @navigate="onNavigate" />
 
     <QuickActions class="st-fade-up st-delay-3" @navigate="onNavigate" @refresh="onRefresh" />
 
@@ -93,6 +93,8 @@ const stats = computed(() => {
    * sub = 卡片底下那行小字。⚠️ 必须是【从数据里算出来的】真数字：
    *   以前这里放过“较昨日 +12%”这种占位文案，那属于造假，一律不要。
    *   算出来是 0 就老实说 0（比如“无逾期”）。
+   *
+   * path = 点这张卡跳到哪儿。卡是可点的（整张卡都是点击区）。
    */
   return [
     {
@@ -101,6 +103,7 @@ const stats = computed(() => {
       icon: List,
       tone: 'teal',
       sub: overdue ? `其中 ${overdue} 条已逾期` : '暂无逾期',
+      path: '/todo',
     },
     {
       label: '请假申请',
@@ -108,6 +111,7 @@ const stats = computed(() => {
       icon: Document,
       tone: 'indigo',
       sub: pending ? `${pending} 条待审批` : '全部已处理',
+      path: '/leave',
     },
     {
       label: '公告数量',
@@ -115,6 +119,7 @@ const stats = computed(() => {
       icon: Warning,
       tone: 'violet',
       sub: topped ? `${topped} 条置顶` : '无置顶公告',
+      path: '/notice',
     },
     {
       label: '小组成员',
@@ -122,6 +127,7 @@ const stats = computed(() => {
       icon: User,
       tone: 'pink',
       sub: `分属 ${departments} 个部门`,
+      path: '/contacts',
     },
   ]
 })
