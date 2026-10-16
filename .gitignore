@@ -19,6 +19,10 @@ pnpm-debug.log*
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+# *.code-workspace 是「本机多根工作区」配置，里面常带 ../ 这种只在本机存在的路径，
+# 提交上去队友打开会看到不存在的根目录（VS Code 报红）。
+# 要共享的编辑器设置请写 .vscode/settings.json —— 那个是进仓库的。
+*.code-workspace
 .idea/
 *.suo
 *.ntvs*
@@ -49,6 +53,7 @@ coverage/
 # 这些动辄几十 MB，而且每次跑都会变，不该进仓库。
 .ui-audit/
 .dsh-vision-router/
+
 .env.*
 !.env.example
 
