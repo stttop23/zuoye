@@ -200,6 +200,7 @@ import {
   ArrowDown,
   Bell,
   ChatDotRound,
+  ChatLineRound,
   Document,
   Edit,
   Expand,
@@ -326,6 +327,8 @@ const menus = [
   { path: '/leave', title: '请假申请', icon: Document, tone: 'violet' },
   { path: '/todo', title: '待办事项', icon: List, tone: 'orchid' },
   { path: '/contacts', title: '通讯录', icon: User, tone: 'pink' },
+  // 群聊菜单项来自 feature/luo-xinyu
+  { path: '/chat', title: '群聊', icon: ChatLineRound, tone: 'teal' },
 ]
 
 /*

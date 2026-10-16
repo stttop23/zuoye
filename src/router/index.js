@@ -42,6 +42,13 @@ const routes = [
         component: () => import('../../liuwan/views/contacts/index.vue'),
         meta: { title: '通讯录', icon: 'User' },
       },
+      // 群聊模块来自 feature/luo-xinyu
+      {
+        path: 'chat',
+        name: 'Chat',
+        component: () => import('@/views/chat/ChatView.vue'),
+        meta: { title: '群聊', icon: 'ChatLineRound' },
+      },
       {
         path: 'assistant',
         name: 'Assistant',
