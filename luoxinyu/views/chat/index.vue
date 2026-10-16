@@ -39,7 +39,7 @@
       <header class="chat-header">
         <div class="chat-title">
           <h2>{{ currentGroup.name }}</h2>
-          <span>{{ currentGroup.memberCount }} 位成员</span>
+          <span>{{ currentGroup.members.length }} 位成员</span>
         </div>
         <el-button circle plain aria-label="更多群聊选项">
           <el-icon><MoreFilled /></el-icon>
@@ -53,20 +53,30 @@
             v-for="message in currentGroup.messages"
             :key="message.id"
             class="message-row"
-            :class="{ 'is-self': message.isSelf }"
+            :class="{ 'is-self': message.userId === currentUser.id }"
           >
-            <el-avatar v-if="!message.isSelf" :size="38" :class="['message-avatar', message.color]">
+            <el-avatar
+              v-if="message.userId !== currentUser.id"
+              :size="38"
+              :class="['message-avatar', message.color]"
+            >
               {{ message.avatar }}
             </el-avatar>
             <div class="message-content">
               <div class="message-meta">
-                <strong>{{ message.isSelf ? '我' : message.name }}</strong>
+                <strong>
+                  {{ message.userId === currentUser.id ? currentUser.name : message.name }}
+                </strong>
                 <time>{{ message.time }}</time>
               </div>
               <div class="message-bubble">{{ message.content }}</div>
             </div>
-            <el-avatar v-if="message.isSelf" :size="38" class="message-avatar self-avatar">
-              我
+            <el-avatar
+              v-if="message.userId === currentUser.id"
+              :size="38"
+              class="message-avatar self-avatar"
+            >
+              {{ currentUser.avatar }}
             </el-avatar>
           </div>
         </div>
@@ -74,9 +84,30 @@
 
       <div class="composer">
         <div class="composer-tools">
-          <el-button text aria-label="表情">
-            <el-icon><ElementPlus /></el-icon>
-          </el-button>
+          <el-popover
+            v-model:visible="emojiPopoverVisible"
+            trigger="click"
+            placement="top-start"
+            :width="280"
+          >
+            <template #reference>
+              <el-button text aria-label="表情" :aria-expanded="emojiPopoverVisible">
+                <el-icon><ElementPlus /></el-icon>
+              </el-button>
+            </template>
+            <div class="emoji-picker" aria-label="选择表情">
+              <button
+                v-for="emoji in emojis"
+                :key="emoji"
+                type="button"
+                class="emoji-option"
+                :aria-label="`插入${emoji}表情`"
+                @click="appendEmoji(emoji)"
+              >
+                {{ emoji }}
+              </button>
+            </div>
+          </el-popover>
           <span>按 Enter 发送消息</span>
         </div>
         <el-input
@@ -104,12 +135,14 @@
       </div>
       <el-scrollbar class="members-scroll">
         <div class="member-list">
-          <div v-for="member in currentGroup.members" :key="member.name" class="member-item">
+          <div v-for="member in currentGroup.members" :key="member.userId" class="member-item">
             <el-avatar :size="38" :class="['member-avatar', member.color]">
-              {{ member.avatar }}
+              {{ member.userId === currentUser.id ? currentUser.avatar : member.avatar }}
             </el-avatar>
             <div class="member-info">
-              <strong>{{ member.name }}</strong>
+              <strong>
+                {{ member.userId === currentUser.id ? currentUser.name : member.name }}
+              </strong>
               <span v-if="member.role" class="member-role">{{ member.role }}</span>
               <span v-else class="member-status">{{ member.online ? '在线' : '离线' }}</span>
             </div>
@@ -135,6 +168,34 @@ const currentGroupId = ref('dev')
 const draftMessage = ref('')
 const messageScrollbar = ref(null)
 const replyTimers = new Set()
+const currentUser = ref({ id: 1, name: '刘皖', avatar: '刘' })
+const emojiPopoverVisible = ref(false)
+const emojis = [
+  '😀',
+  '😁',
+  '😂',
+  '🤣',
+  '😊',
+  '😍',
+  '🥰',
+  '😘',
+  '😎',
+  '🤔',
+  '😅',
+  '😭',
+  '😡',
+  '👍',
+  '👎',
+  '👏',
+  '🙏',
+  '🎉',
+  '❤️',
+  '🔥',
+  '✨',
+  '💯',
+  '👌',
+  '🤝',
+]
 
 const groups = ref([
   {
@@ -145,10 +206,10 @@ const groups = ref([
     time: '10:42',
     preview: '我在写代码，稍等。',
     unread: 2,
-    memberCount: 8,
     messages: [
       {
         id: 1,
+        userId: 2,
         name: '用户A',
         avatar: 'A',
         color: 'avatar-green',
@@ -157,6 +218,7 @@ const groups = ref([
       },
       {
         id: 2,
+        userId: 3,
         name: '用户B',
         avatar: 'B',
         color: 'avatar-orange',
@@ -165,21 +227,17 @@ const groups = ref([
       },
       {
         id: 3,
-        name: '我',
-        avatar: '我',
-        color: 'avatar-blue',
+        userId: 1,
         content: '我在写代码，稍等。',
         time: '10:42',
-        isSelf: true,
       },
     ],
     members: [
-      { name: '刘皖', avatar: '刘', color: 'avatar-blue', role: '群主', online: true },
-      { name: '用户A', avatar: 'A', color: 'avatar-green', online: true },
-      { name: '用户B', avatar: 'B', color: 'avatar-orange', online: true },
-      { name: '林晓', avatar: '林', color: 'avatar-purple', online: false },
-      { name: '陈宇', avatar: '陈', color: 'avatar-teal', online: true },
-      { name: '我', avatar: '我', color: 'avatar-gray', online: true },
+      { userId: 1, color: 'avatar-blue', role: '群主', online: true },
+      { userId: 2, name: '用户A', avatar: 'A', color: 'avatar-green', online: true },
+      { userId: 3, name: '用户B', avatar: 'B', color: 'avatar-orange', online: true },
+      { userId: 4, name: '林晓', avatar: '林', color: 'avatar-purple', online: false },
+      { userId: 5, name: '陈宇', avatar: '陈', color: 'avatar-teal', online: true },
     ],
   },
   {
@@ -190,10 +248,10 @@ const groups = ref([
     time: '昨天',
     preview: '周五我们一起确认方案吧。',
     unread: 0,
-    memberCount: 6,
     messages: [
       {
         id: 4,
+        userId: 4,
         name: '林晓',
         avatar: '林',
         color: 'avatar-purple',
@@ -202,9 +260,9 @@ const groups = ref([
       },
     ],
     members: [
-      { name: '刘皖', avatar: '刘', color: 'avatar-blue', role: '群主', online: true },
-      { name: '林晓', avatar: '林', color: 'avatar-purple', online: true },
-      { name: '陈宇', avatar: '陈', color: 'avatar-teal', online: false },
+      { userId: 1, color: 'avatar-blue', role: '群主', online: true },
+      { userId: 4, name: '林晓', avatar: '林', color: 'avatar-purple', online: true },
+      { userId: 5, name: '陈宇', avatar: '陈', color: 'avatar-teal', online: false },
     ],
   },
   {
@@ -215,10 +273,10 @@ const groups = ref([
     time: '周一',
     preview: '请大家及时查看本周安排。',
     unread: 1,
-    memberCount: 12,
     messages: [
       {
         id: 5,
+        userId: 6,
         name: '辅导员',
         avatar: '导',
         color: 'avatar-orange',
@@ -227,9 +285,16 @@ const groups = ref([
       },
     ],
     members: [
-      { name: '辅导员', avatar: '导', color: 'avatar-orange', role: '群主', online: true },
-      { name: '刘皖', avatar: '刘', color: 'avatar-blue', online: true },
-      { name: '林晓', avatar: '林', color: 'avatar-purple', online: false },
+      {
+        userId: 6,
+        name: '辅导员',
+        avatar: '导',
+        color: 'avatar-orange',
+        role: '群主',
+        online: true,
+      },
+      { userId: 1, color: 'avatar-blue', online: true },
+      { userId: 4, name: '林晓', avatar: '林', color: 'avatar-purple', online: false },
     ],
   },
 ])
@@ -258,6 +323,11 @@ function selectGroup(groupId) {
   currentGroupId.value = groupId
   const group = groups.value.find((item) => item.id === groupId)
   if (group) group.unread = 0
+}
+
+function appendEmoji(emoji) {
+  draftMessage.value += emoji
+  emojiPopoverVisible.value = false
 }
 
 /*
@@ -326,15 +396,12 @@ async function sendMessage() {
   const groupId = group.id
   group.messages.push({
     id: Date.now(),
-    name: '我',
-    avatar: '我',
-    color: 'avatar-blue',
+    userId: currentUser.value.id,
     content,
     time: new Date().toLocaleTimeString('zh-CN', {
       hour: '2-digit',
       minute: '2-digit',
     }),
-    isSelf: true,
   })
   group.preview = content
   group.time = '刚刚'
@@ -349,6 +416,7 @@ async function sendMessage() {
 
     replyGroup.messages.push({
       id: Date.now(),
+      userId: 2,
       name: '用户A',
       avatar: 'A',
       color: 'avatar-green',
@@ -657,6 +725,32 @@ onUnmounted(() => {
 
 .composer-tools {
   margin-bottom: 6px;
+}
+
+.emoji-picker {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+
+.emoji-option {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--st-radius-sm);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 20px;
+}
+
+.emoji-option:hover,
+.emoji-option:focus-visible {
+  background: var(--st-primary-light);
+  outline: none;
 }
 
 .composer-tools span,
