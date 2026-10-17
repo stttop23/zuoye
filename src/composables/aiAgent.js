@@ -155,7 +155,6 @@ const COMMAND_ROUTES = {
   leave_cancel: { target: 'leave', page: '/leave' },
   leave_review: { target: 'leave', page: '/leave' },
   notice_open: { target: 'notice', page: '/notice' },
-  switch_role: { target: 'system', page: null },
   rename_user: { target: 'system', page: null },
   toggle_setting: { target: 'system', page: null },
   // 群聊：三个动作都交给群聊页接（页面里 watch pendingCommand 的那段）

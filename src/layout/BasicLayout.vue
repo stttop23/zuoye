@@ -390,24 +390,15 @@ async function logout() {
 }
 
 /*
- * ---- AI 助手：切换身份 / 改显示名称 / 开关设置 ----
- * 这三件事不依赖任何页面（侧边栏是全站常驻的），所以不用跳页就能干。
+ * ---- AI 助手：改显示名称 / 开关设置 ----
+ * 这两件事不依赖任何页面（侧边栏是全站常驻的），所以不用跳页就能干。
+ * ⚠️ 身份切换不在这里：顶栏那个下拉是给演示用的，AI 没有切换身份的权限。
  */
 watch(
   pendingCommand,
   () => {
     const command = consumeCommand('system')
     if (!command) return
-
-    if (command.type === 'switch_role') {
-      if (userRole.value === command.role) {
-        ElMessage.info(command.role === 'admin' ? '现在就是管理员' : '现在就是学生')
-        return
-      }
-      userRole.value = command.role
-      ElMessage.success(command.role === 'admin' ? '已切到管理员' : '已切回学生')
-      return
-    }
 
     if (command.type === 'rename_user') {
       if (command.name === userName.value) {

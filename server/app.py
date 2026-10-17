@@ -313,18 +313,6 @@ TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "switch_role",
-            "description": "切换当前用户的身份（学生 ↔ 管理员）。用户说「切到管理员」「换回学生」时调用。",
-            "parameters": {
-                "type": "object",
-                "properties": {"role": {"type": "string", "enum": ["student", "admin"]}},
-                "required": ["role"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "rename_user",
             "description": "改当前用户的显示名称。用户说「以后叫我小王」「把我名字改成…」时调用。",
             "parameters": {
@@ -435,7 +423,6 @@ SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用
 - cancel_leave：撤销自己还没审批的请假
 - review_leave：审批请假（通过 / 驳回，只有管理员能调）
 - open_notice：在公告页搜一条公告并打开详情
-- switch_role：切换身份（学生 / 管理员）
 - rename_user：改用户的显示名称
 - toggle_setting：开关界面动效、未读红点
 - list_todos / list_notices / list_leave_records / checkin_status：查数据（只读，不会改任何东西）
@@ -459,7 +446,8 @@ SYSTEM_PROMPT = """你是「学生工作管理系统」里的 AI 助手，帮用
   「撤销打卡」→ undo_check_in；「撤销我的请假」→ cancel_leave；
   「删掉那条待办」→ manage_todo（action=delete）。
 审批类（review_leave）只有管理员能调：当前身份是学生时，
-用户让你审批就照直说「切到管理员才能审批」，不要硬调。
+用户让你审批就照直说「要审批得先在顶栏切换成管理员」，不要硬调。
+你【不能】帮用户切换身份 —— 身份由账号决定，不要答应这种要求。
 审批只能动【还没审批的】记录；已经批过的不重复审。
 
 硬性规则：
@@ -1037,9 +1025,6 @@ def action_from_tool(name, args):
     if name == "open_notice":
         keyword = (args.get("keyword") or "").strip()
         return {"type": "notice_open", "keyword": keyword[:40]} if keyword else None
-    if name == "switch_role":
-        role = args.get("role")
-        return {"type": "switch_role", "role": role} if role in ("student", "admin") else None
     if name == "rename_user":
         new_name = (args.get("name") or "").strip()
         return {"type": "rename_user", "name": new_name[:20]} if new_name else None
@@ -1565,13 +1550,6 @@ def local_parse(text, page, snapshot=None):
             return [{"type": "checkin_undo"}], "正在帮你撤销打卡。"
         return [{"type": "checkin"}], "正在帮你打卡。"
 
-    # 身份切换（演示用）：要求同时出现「身份词」和「切换词」，免得乱切
-    if re.search(r"切换|切到|切成|换成|变成|切回", text):
-        if re.search(r"管理员|老师", text):
-            return [{"type": "switch_role", "role": "admin"}], "已切到管理员。"
-        if re.search(r"学生", text):
-            return [{"type": "switch_role", "role": "student"}], "已切回学生。"
-
     # 改显示名称
     named = re.search(r"(?:叫我|喊我|名字改成|改名为|改成)\s*([一-龥A-Za-z0-9]{1,12})", text)
     if named and not re.search(r"待办|任务|公告|请假", text):
@@ -1593,8 +1571,10 @@ def local_parse(text, page, snapshot=None):
         )
 
     # 想跳页面
+    # ⚠️ 「切到 / 进入」也要算跳页：否则「切到待办事项」会落到下面的“待办”分支，
+    #    被 local_todo 当成「新建待办」，弹出一个空弹窗。
     for path, name in PAGES.items():
-        if name in text and re.search(r"打开|去|跳|换|看", text):
+        if name in text and re.search(r"打开|进入|切到|去|跳|换|看", text):
             return [{"type": "navigate", "path": path}], f"带你到「{name}」。"
 
     chat = local_chat(text)
@@ -1701,7 +1681,7 @@ def enforce_navigation(reply, actions, user_text):
 #    否则会把模型查到的真答案换成本地兜底的呛人话。
 #    下面的词都是「动词 + 明确对象」，查数据的问句里不会出现。
 COMMAND_ONLY_RE = re.compile(
-    r"切换|切到|切成|换成|变成|切回|动效|动画|红点|叫我|喊我|名字改成|改名为|"
+    r"切到|动效|动画|红点|叫我|喊我|名字改成|改名为|"
     r"撤销|删掉|删除|标成完成|标记为?完成|重新打开|通过|驳回|不批|拒绝"
 )
 
@@ -1709,7 +1689,7 @@ COMMAND_ONLY_RE = re.compile(
 # ⚠️ 口径宁窄勿宽：只放「动词 + 明确对象」的词；查数据的问句里不会出现这些。
 #    （「我有哪些待办」不含任何词 → 交给模型；「打开待办事项」命中 → 秒回）
 QUICK_COMMAND_RE = re.compile(
-    r"打开|进入|切到|跳到|切换|切回|切成|换成|变成|"
+    r"打开|进入|切到|跳到|"
     r"叫我|喊我|名字改成|改名为|"
     r"动效|动画|红点|未读|"
     r"打卡|签到|"
