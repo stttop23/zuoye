@@ -114,6 +114,8 @@ const sourceLabels = {
   ai: 'AI',
   ollama: '本机模型',
   local: '本地规则',
+  // 确定性命令由本地规则直接执行（毫秒级），不走模型 —— 和「模型挂了」的 local 区分开
+  rule: '规则',
 }
 
 const suggestions = [

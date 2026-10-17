@@ -700,6 +700,10 @@ def call_model(messages, provider):
             #    1024 是实测出来的甜点：够它啰嗦几句再调工具，又不会失控。
             "max_tokens": 1536,
             "stream": False,
+            # ⚠️ 默认 5 分钟没请求，Ollama 就把 5GB 权重从显存里赶走；
+            #    演示时间隔一会儿再问，第一条要重新加载模型，看起来就像「卡死」。
+            #    30 分钟足够一场答辩，答完再让系统自己收。
+            "keep_alive": "30m",
         },
         timeout=provider["timeout"],
     )
@@ -1701,6 +1705,19 @@ COMMAND_ONLY_RE = re.compile(
     r"撤销|删掉|删除|标成完成|标记为?完成|重新打开|通过|驳回|不批|拒绝"
 )
 
+# 「快速路径」：这些词出现 = 用户明显在下命令，本地规则能直接执行，不用问模型。
+# ⚠️ 口径宁窄勿宽：只放「动词 + 明确对象」的词；查数据的问句里不会出现这些。
+#    （「我有哪些待办」不含任何词 → 交给模型；「打开待办事项」命中 → 秒回）
+QUICK_COMMAND_RE = re.compile(
+    r"打开|进入|切到|跳到|切换|切回|切成|换成|变成|"
+    r"叫我|喊我|名字改成|改名为|"
+    r"动效|动画|红点|未读|"
+    r"打卡|签到|"
+    r"撤销|删掉|删除|标成完成|标记为?完成|重新打开|"
+    r"通过|驳回|不批|拒绝|"
+    r"发出去|发送|发到|发个|发条|发一句|起草"
+)
+
 
 def connect_database():
     connection = sqlite3.connect(DATABASE_PATH)
@@ -2132,6 +2149,27 @@ def chat():
         if message.get("role") == "user":
             last_user_text = message.get("content") or ""
             break
+
+    # ---------- 快速路径：确定性的命令直接本地执行，不问模型 ----------
+    #
+    # 为什么：一条命令要模型来回 3 次推理（先答→被追问→调工具→再答），
+    # 实测 7~8 秒；而这些说法（打开某页 / 切身份 / 打卡 / 标成完成……）
+    # 本地规则其实全认。命中就毫秒级返回，模型只在真正需要「理解」时上场。
+    #
+    # ⚠️ 必须要求 local_parse 真的解析出动作：只命中关键词但没动作
+    #    （比如「打开公告」—— 页面名是「公告通知」，没对上）就继续交给模型，
+    #    不能把「认不出」的回复提前返回给用户。
+    if last_user_text and QUICK_COMMAND_RE.search(last_user_text):
+        quick_actions, quick_reply = local_parse(last_user_text, page, snapshot)
+        if quick_actions:
+            return jsonify(
+                {
+                    "ok": True,
+                    "source": "rule",
+                    "reply": quick_reply,
+                    "actions": quick_actions,
+                }
+            )
 
     # 通道是一个个试的：本机模型 → 本地死规则
     failures = []
