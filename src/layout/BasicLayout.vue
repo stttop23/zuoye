@@ -125,6 +125,7 @@
 
           <el-select v-model="userRole" class="role-select" aria-label="切换用户身份">
             <el-option label="学生" value="student" />
+            <el-option label="组长" value="leader" />
             <el-option label="管理员" value="admin" />
           </el-select>
           <el-button text class="profile-button" @click="openProfileDialog">
@@ -167,9 +168,7 @@
         </el-form-item>
 
         <el-form-item label="身份">
-          <el-tag :type="isAdmin ? 'warning' : 'info'" effect="plain">
-            {{ isAdmin ? '管理员' : '学生' }}
-          </el-tag>
+          <el-tag :type="roleTagType" effect="plain">{{ roleLabel }}</el-tag>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -228,6 +227,15 @@ const route = useRoute()
 const router = useRouter()
 const { userName, userInitial, userRole, isAdmin, resetProfile } = useUserProfile()
 const { motionOn, bellBadgeOn } = useUiSettings()
+
+/** 身份 → 显示文字 / 标签颜色（学生 / 组长 / 管理员） */
+const ROLE_META = {
+  student: { label: '学生', type: 'info' },
+  leader: { label: '组长', type: 'success' },
+  admin: { label: '管理员', type: 'warning' },
+}
+const roleLabel = computed(() => (ROLE_META[userRole.value] ?? ROLE_META.student).label)
+const roleTagType = computed(() => (ROLE_META[userRole.value] ?? ROLE_META.student).type)
 
 /** 设置弹窗开关（侧边栏底部「设置」打开的） */
 const settingsDialogVisible = ref(false)

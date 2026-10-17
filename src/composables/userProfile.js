@@ -6,9 +6,13 @@ const roleStorageKey = 'student-work-user-role'
 /** 没在本地改过时的默认身份 */
 const DEFAULT_NAME = '刘皖'
 
+/** 全部合法身份。组长：能发公告给社员，但不能审批（审批只有管理员能做） */
+const ROLES = ['student', 'leader', 'admin']
+
 function readUserRole() {
   try {
-    return localStorage.getItem(roleStorageKey) === 'admin' ? 'admin' : 'student'
+    const saved = localStorage.getItem(roleStorageKey)
+    return ROLES.includes(saved) ? saved : 'student'
   } catch {
     return 'student'
   }
@@ -26,6 +30,7 @@ const userName = ref(readUserName())
 const userInitial = computed(() => Array.from(userName.value.trim())[0] || '用')
 const userRole = ref(readUserRole())
 const isAdmin = computed(() => userRole.value === 'admin')
+const isLeader = computed(() => userRole.value === 'leader')
 
 watch(userName, (name) => {
   try {
@@ -53,5 +58,5 @@ function resetProfile() {
 }
 
 export function useUserProfile() {
-  return { userName, userInitial, userRole, isAdmin, resetProfile }
+  return { userName, userInitial, userRole, isAdmin, isLeader, resetProfile }
 }

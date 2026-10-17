@@ -27,6 +27,16 @@ const MATRIX = {
   // 学生：能自己请假、自己建待办，但不能审批别人的假、不能发布公告
   student: ['leave.apply', 'leave.cancelOwn', 'todo.create', 'todo.editOwn'],
 
+  // 组长：在学生的能力之上多出「发布公告」—— 能把通知发给社员；
+  // 审批请假仍然只有管理员能做（用户明确要求的分工）
+  leader: [
+    'leave.apply',
+    'leave.cancelOwn',
+    'todo.create',
+    'todo.editOwn',
+    'notice.publish',
+  ],
+
   // 管理员：在学生的全部能力之上，多出「审别人的」和「发公告」
   admin: [
     'leave.apply',
