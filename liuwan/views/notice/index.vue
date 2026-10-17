@@ -88,7 +88,10 @@ const filteredList = computed(() => {
   return allNotices.value
     .filter((item) => {
       const matchKeyword =
-        !kw || item.title.includes(kw) || item.author.includes(kw) || item.content.includes(kw)
+        !kw ||
+        item.title.includes(kw) ||
+        item.author.includes(kw) ||
+        (item.content || '').includes(kw)
       const matchType = !typeFilter.value || item.type === typeFilter.value
       return matchKeyword && matchType
     })

@@ -47,7 +47,8 @@
       </header>
 
       <el-scrollbar ref="messageScrollbar" class="message-scroll">
-        <div class="message-list">
+        <!-- key 绑定当前群：切群时整块重建，消息的入场动画才会重播 -->
+        <div :key="currentGroupId" class="message-list">
           <div class="date-divider"><span>今天</span></div>
           <div
             v-for="message in currentGroup.messages"
@@ -120,7 +121,12 @@
         />
         <div class="composer-footer">
           <span>友善沟通，让协作更高效</span>
-          <el-button type="primary" :disabled="!draftMessage.trim()" @click="sendMessage">
+          <el-button
+            class="chat-send"
+            type="primary"
+            :disabled="!draftMessage.trim()"
+            @click="sendMessage"
+          >
             <el-icon><Promotion /></el-icon>
             发送
           </el-button>
@@ -472,6 +478,24 @@ onUnmounted(() => {
   background: var(--st-bg-card);
 }
 
+/* ---------- 入场：接全站那套（st-fade-up + --st-duration/ease 令牌）----------
+   页面切换本身的淡入由 BasicLayout 的 <transition name="page"> 负责，
+   这里补的是「进来之后三栏依次出现」和「消息逐条冒出来」。
+   减少动效的兜底在 global.css（prefers-reduced-motion / .st-no-motion）。 */
+.chat-sidebar {
+  animation: st-fade-up var(--st-duration-slow) var(--st-ease) both;
+}
+
+.chat-main {
+  animation: st-fade-up var(--st-duration-slow) var(--st-ease) both;
+  animation-delay: 0.06s;
+}
+
+.members-sidebar {
+  animation: st-fade-up var(--st-duration-slow) var(--st-ease) both;
+  animation-delay: 0.12s;
+}
+
 .chat-sidebar {
   border-right: 1px solid var(--st-border-color-light);
 }
@@ -513,6 +537,7 @@ onUnmounted(() => {
 }
 
 .group-item {
+  position: relative;
   display: flex;
   width: calc(100% - 16px);
   align-items: center;
@@ -525,7 +550,23 @@ onUnmounted(() => {
   cursor: pointer;
   font: inherit;
   text-align: left;
-  transition: background-color 0.2s;
+  transition:
+    background-color var(--st-duration-fast) var(--st-ease),
+    box-shadow var(--st-duration-fast) var(--st-ease);
+  animation: st-fade-up var(--st-duration-base) var(--st-ease) both;
+}
+
+/* 群列表错峰：挨个冒出来（再多就不像动画，像卡了） */
+.group-item:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.group-item:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.group-item:nth-child(3) {
+  animation-delay: 0.22s;
 }
 
 .group-item:hover,
@@ -533,8 +574,18 @@ onUnmounted(() => {
   background: var(--st-primary-light);
 }
 
-.group-item.is-active {
-  box-shadow: inset 3px 0 var(--st-primary);
+/* 选中项：左侧渐变竖条（和侧边栏菜单、区块标题同一套语言）。
+   inset box-shadow 不支持渐变，所以用伪元素画。 */
+.group-item.is-active::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 3px;
+  height: 22px;
+  background: var(--st-gradient-brand);
+  border-radius: var(--st-radius-pill);
+  transform: translateY(-50%);
 }
 
 .group-avatar,
@@ -623,6 +674,8 @@ onUnmounted(() => {
 
 .unread-dot {
   background: var(--st-danger);
+  /* 新未读出现时弹一下 */
+  animation: st-pop var(--st-duration-base) var(--st-ease-back) both;
 }
 
 .online-dot {
@@ -667,6 +720,7 @@ onUnmounted(() => {
   font-size: 12px;
   background: var(--st-bg-card);
   border-radius: 999px;
+  animation: st-fade-in var(--st-duration-base) var(--st-ease) both;
 }
 
 .message-row {
@@ -674,10 +728,45 @@ onUnmounted(() => {
   max-width: 85%;
   align-items: flex-start;
   gap: 10px;
+  /* 新消息插入时自动播；初次进页 / 切群时（列表按 currentGroupId 重建）也播一遍 */
+  animation: chat-msg-in var(--st-duration-base) var(--st-ease) both;
 }
 
+/* 自己发的从右侧进来，更符合「消息是我推出去的」直觉 */
 .message-row.is-self {
   align-self: flex-end;
+  animation-name: chat-msg-in-self;
+}
+
+/* 前几条错峰，后面（包括刚发的新消息）立刻出现 */
+.message-row:nth-child(2) {
+  animation-delay: 0.03s;
+}
+
+.message-row:nth-child(3) {
+  animation-delay: 0.06s;
+}
+
+.message-row:nth-child(4) {
+  animation-delay: 0.09s;
+}
+
+.message-row:nth-child(5) {
+  animation-delay: 0.12s;
+}
+
+@keyframes chat-msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes chat-msg-in-self {
+  from {
+    opacity: 0;
+    transform: translate(10px, 6px);
+  }
 }
 
 .message-content {
@@ -761,6 +850,28 @@ onUnmounted(() => {
 
 .composer-footer {
   margin-top: 8px;
+}
+
+/* 发送按钮：品牌渐变（全站渐变只做点缀，这里是本页唯一的主操作） */
+.chat-send {
+  background-image: var(--st-gradient-brand);
+  border-color: transparent;
+  box-shadow: var(--st-shadow-grad);
+}
+
+.chat-send:hover,
+.chat-send:focus {
+  background-image: var(--st-gradient-brand);
+  border-color: transparent;
+  filter: brightness(1.07);
+}
+
+/* 输入为空时禁用：渐变和投影都撤掉，一眼能看出“现在发不了” */
+.chat-send.is-disabled,
+.chat-send.is-disabled:hover {
+  background-image: none;
+  box-shadow: none;
+  filter: none;
 }
 
 .members-heading {

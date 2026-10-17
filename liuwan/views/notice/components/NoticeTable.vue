@@ -8,7 +8,12 @@
     <template v-if="isMobile">
       <ul v-if="list.length" class="notice-list">
         <li v-for="row in list" :key="row.id">
-          <button type="button" class="notice-list__item" @click="emit('detail', row)">
+          <button
+            type="button"
+            class="notice-list__item"
+            :class="{ 'is-top': row.top }"
+            @click="emit('detail', row)"
+          >
             <span class="notice-list__title">{{ row.title }}</span>
             <el-tag v-if="row.top" type="danger" size="small" effect="light">置顶</el-tag>
           </button>
@@ -120,14 +125,16 @@ const pageSize = defineModel('pageSize', { type: Number, default: 5 })
 }
 
 .notice-list__item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  padding: 14px 0;
+  padding: 14px 10px 14px 16px;
   border: none;
   border-bottom: 1px solid var(--st-border-color-hair);
+  border-radius: var(--st-radius-sm);
   font: inherit;
   font-size: 15px;
   color: var(--st-text-primary);
@@ -135,7 +142,26 @@ const pageSize = defineModel('pageSize', { type: Number, default: 5 })
   appearance: none;
   background: none;
   cursor: pointer;
-  transition: color var(--st-duration-fast) var(--st-ease);
+  transition:
+    color var(--st-duration-fast) var(--st-ease),
+    background-color var(--st-duration-fast) var(--st-ease);
+}
+
+.notice-list__item:hover {
+  background: var(--st-bg-hover);
+}
+
+/* 置顶项左侧一道红条：列表上一眼能分出哪几条是置顶的 */
+.notice-list__item.is-top::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 3px;
+  height: 16px;
+  background: var(--st-danger);
+  border-radius: var(--st-radius-pill);
+  transform: translateY(-50%);
 }
 
 .notice-list li:last-child .notice-list__item {
@@ -144,6 +170,7 @@ const pageSize = defineModel('pageSize', { type: Number, default: 5 })
 
 .notice-list__item:active {
   color: var(--st-primary);
+  background: var(--st-primary-lighter);
 }
 
 .notice-list__title {
