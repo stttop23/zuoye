@@ -61,6 +61,7 @@ import NoticeTable from './components/NoticeTable.vue'
 import NoticeDetailDialog from './components/NoticeDetailDialog.vue'
 import NoticePublishDialog from './components/NoticePublishDialog.vue'
 import { nextId, notices } from '@/composables/appStore'
+import { markNoticeRead } from '@/composables/notifications'
 import { useUserProfile } from '@/composables/userProfile'
 import { usePermissions } from '@/composables/permissions'
 import { consumeCommand, pendingCommand } from '@/composables/aiAgent'
@@ -143,6 +144,9 @@ const currentNotice = ref(null)
 const publishVisible = ref(false)
 
 function openDetail(row) {
+  // 打开就算读过：列表上的未读点消失，铃铛里对应的公告通知也一起变已读
+  // （两处共用 readIds 里的 `notice-<id>`）
+  markNoticeRead(row.id)
   currentNotice.value = row
   dialogVisible.value = true
 }

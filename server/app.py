@@ -27,10 +27,11 @@ import os
 import re
 import sqlite3
 import threading
+import uuid
 from datetime import date, datetime, timedelta
 
 import requests
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 
 try:  # 有 python-dotenv 就自动读 server/.env，没有也不影响
     from dotenv import load_dotenv
@@ -43,6 +44,33 @@ app = Flask(__name__)
 DATABASE_PATH = os.getenv(
     "STUDENT_WORK_DB", os.path.join(os.path.dirname(__file__), "student_work.db")
 )
+
+# 公告附件：文件落在 server/uploads/，数据库里只存 { name, size, url }
+# ⚠️ 目录必须进 .gitignore —— 里面是用户传的文件，不能提上去
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 单个文件 10MB
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES + 1024 * 1024  # 留 1MB 给表单开销
+
+ALLOWED_UPLOAD_EXT = {
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".txt",
+    ".md",
+    ".csv",
+    ".zip",
+    ".rar",
+    ".7z",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+}
 
 try:  # 同目录下的临时假数据，为什么有这个东西见它自己的文件头
     import mock_data
@@ -1692,7 +1720,8 @@ def initialize_database():
                 author TEXT NOT NULL,
                 publish_time TEXT NOT NULL,
                 top INTEGER NOT NULL DEFAULT 0,
-                content TEXT NOT NULL DEFAULT ''
+                content TEXT NOT NULL DEFAULT '',
+                attachments TEXT NOT NULL DEFAULT '[]'
             );
             CREATE TABLE IF NOT EXISTS leaves (
                 id INTEGER PRIMARY KEY,
@@ -1722,12 +1751,18 @@ def initialize_database():
             );
             """
         )
+        # 旧库是 2026-10 之前建的，没有 attachments 列 —— 补上，别让老数据把服务打挂。
+        # （SQLite 的 ADD COLUMN 带常量默认值，不需要重建表）
+        columns = {row[1] for row in db.execute("PRAGMA table_info(notices)")}
+        if "attachments" not in columns:
+            db.execute("ALTER TABLE notices ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'")
+
         db.execute("INSERT OR IGNORE INTO workspace_meta (id, initialized) VALUES (1, 0)")
         if db.execute("SELECT COUNT(*) FROM notices").fetchone()[0] == 0:
             db.executemany(
                 """INSERT INTO notices
-                   (id, title, type, author, publish_time, top, content)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                   (id, title, type, author, publish_time, top, content, attachments)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 [
                     (
                         item["id"],
@@ -1737,6 +1772,7 @@ def initialize_database():
                         item["publishTime"],
                         int(item.get("top", False)),
                         item.get("content", ""),
+                        json.dumps(item.get("attachments", []), ensure_ascii=False),
                     )
                     for item in mock_data.NOTICES
                 ],
@@ -1818,6 +1854,8 @@ def valid_workspace(data):
         or not isinstance(item.get("top", False), bool)
         or not isinstance(item.get("content", ""), str)
         or len(item.get("content", "")) > 10000
+        or not isinstance(item.get("attachments", []), list)
+        or len(item.get("attachments", [])) > 5
         for item in notices
     ):
         return False
@@ -1868,6 +1906,36 @@ def valid_workspace(data):
     )
 
 
+def parse_attachments(raw):
+    """把数据库里的 JSON 字符串还原成附件列表。
+
+    ⚠️ 三道兜底：不是 JSON / 不是数组 / 数组里混了脏数据，都只丢掉不要报错 ——
+       公告正文能显示比一个附件字段把整个接口搞挂重要得多。
+    """
+    try:
+        value = json.loads(raw or "[]")
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(value, list):
+        return []
+    result = []
+    for item in value:
+        if not isinstance(item, dict) or not item.get("url"):
+            continue
+        try:
+            size = int(item.get("size", 0) or 0)
+        except (TypeError, ValueError):
+            size = 0
+        result.append(
+            {
+                "name": str(item.get("name", "附件"))[:120],
+                "size": size,
+                "url": str(item["url"])[:300],
+            }
+        )
+    return result
+
+
 def serialize_notice(row):
     return {
         "id": row["id"],
@@ -1877,6 +1945,7 @@ def serialize_notice(row):
         "publishTime": row["publish_time"],
         "top": bool(row["top"]),
         "content": row["content"],
+        "attachments": parse_attachments(row["attachments"]),
     }
 
 
@@ -1944,12 +2013,13 @@ def save_workspace():
         db.execute("DELETE FROM todos")
         db.executemany(
             """INSERT INTO notices
-               (id, title, type, author, publish_time, top, content)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               (id, title, type, author, publish_time, top, content, attachments)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             [
                 (
                     item["id"], item["title"], item["type"], item["author"],
                     item["publishTime"], int(item.get("top", False)), item.get("content", ""),
+                    json.dumps(item.get("attachments", []), ensure_ascii=False),
                 )
                 for item in data["notices"]
             ],
@@ -1982,6 +2052,50 @@ def save_workspace():
         )
         db.execute("UPDATE workspace_meta SET initialized = 1 WHERE id = 1")
     return jsonify({"ok": True})
+
+
+# ------------------------------------------------------------------
+# 公告附件
+# ------------------------------------------------------------------
+@app.post("/api/upload")
+def upload_attachment():
+    """收一个文件，存到 server/uploads/，返回可下载的地址。
+
+    ⚠️ 数据库里【不存文件内容】，只存 { name, size, url } ——
+       把文件塞进 SQLite/localStorage 会在演示时把浏览器拖死。
+    ⚠️ 存储名用 uuid + 原扩展名：中文名在 URL 里容易出问题，原名只用来显示。
+    """
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return jsonify({"ok": False, "error": "没有收到文件"}), 400
+
+    original = os.path.basename(file.filename)
+    ext = os.path.splitext(original)[1].lower()
+    if ext not in ALLOWED_UPLOAD_EXT:
+        return jsonify({"ok": False, "error": f"不支持的文件类型：{ext or '无扩展名'}"}), 400
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    stored = f"{uuid.uuid4().hex}{ext}"
+    path = os.path.join(UPLOAD_DIR, stored)
+    file.save(path)
+
+    size = os.path.getsize(path)
+    if size > MAX_UPLOAD_BYTES:
+        os.remove(path)
+        return jsonify({"ok": False, "error": "文件超过 10MB"}), 400
+
+    return jsonify(
+        {
+            "ok": True,
+            "file": {"name": original[:120], "size": size, "url": f"/api/files/{stored}"},
+        }
+    )
+
+
+@app.get("/api/files/<name>")
+def download_attachment(name):
+    """下载附件。⚠️ basename 是必须的：防止 ../../ 把服务器上的任意文件读走。"""
+    return send_from_directory(UPLOAD_DIR, os.path.basename(name))
 
 
 def enforce_commands(reply, actions, user_text, page, snapshot=None):

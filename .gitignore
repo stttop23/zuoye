@@ -40,6 +40,9 @@ coverage/
 .cache/
 .vite/
 
+# --- 用户上传的公告附件（文件本体不进仓库）---
+server/uploads/
+
 # --- 密钥（永远不提交）---
 .env
 

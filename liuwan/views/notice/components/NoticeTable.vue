@@ -14,7 +14,14 @@
             :class="{ 'is-top': row.top }"
             @click="emit('detail', row)"
           >
-            <span class="notice-list__title">{{ row.title }}</span>
+            <span class="notice-list__title">
+              <i
+                v-if="!isNoticeRead(row.id)"
+                class="notice-unread-dot"
+                aria-hidden="true"
+              />
+              <span class="notice-list__text">{{ row.title }}</span>
+            </span>
             <el-tag v-if="row.top" type="danger" size="small" effect="light">置顶</el-tag>
           </button>
         </li>
@@ -26,7 +33,10 @@
       <el-table-column type="index" label="序号" width="70" align="center" />
       <el-table-column prop="title" label="公告标题" min-width="240" show-overflow-tooltip>
         <template #default="{ row }">
-          <span class="notice__title" @click="emit('detail', row)">{{ row.title }}</span>
+          <span class="notice__title" @click="emit('detail', row)">
+            <i v-if="!isNoticeRead(row.id)" class="notice-unread-dot" aria-hidden="true" />
+            <span class="notice__title-text">{{ row.title }}</span>
+          </span>
           <el-tag v-if="row.top" type="danger" size="small" effect="light" class="notice__top">
             置顶
           </el-tag>
@@ -76,6 +86,7 @@
 import { computed } from 'vue'
 import { View } from '@element-plus/icons-vue'
 import { useIsMobile } from '@/composables/useMediaQuery'
+import { isNoticeRead } from '@/composables/notifications'
 
 defineProps({
   list: { type: Array, required: true },
@@ -105,8 +116,28 @@ const pageSize = defineModel('pageSize', { type: Number, default: 5 })
 }
 
 .notice__title {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
   color: var(--st-text-primary);
   cursor: pointer;
+}
+
+.notice__title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 未读小圆点：公告页与铃铛共用同一份已读记录（notice-<id>） */
+.notice-unread-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  background: var(--st-primary);
+  border-radius: 50%;
 }
 
 .notice__title:hover {
@@ -174,8 +205,17 @@ const pageSize = defineModel('pageSize', { type: Number, default: 5 })
 }
 
 .notice-list__title {
-  flex: 1;
+  display: flex;
   min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+}
+
+.notice-list__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pagination {

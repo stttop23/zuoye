@@ -187,6 +187,20 @@ export function markAllNotificationsRead() {
   persist()
 }
 
+/*
+ * 公告已读与通知已读共用同一份记录：
+ * 通知中心里公告的 id 就是 `notice-<公告id>`，所以同一个 id 两边都认。
+ * 好处是你从铃铛点开公告、或直接在公告页打开详情，两边会同时变已读。
+ */
+export function isNoticeRead(noticeId) {
+  return readIds.value.includes(`notice-${noticeId}`)
+}
+
+export function markNoticeRead(noticeId) {
+  if (noticeId === undefined || noticeId === null) return
+  markNotificationRead(`notice-${noticeId}`)
+}
+
 /**
  * 塞一条新通知。示例：
  *   pushNotification({ type: 'leave', title: '请假申请已提交', content: '等待审批', path: '/leave' })

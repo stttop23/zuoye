@@ -22,8 +22,24 @@
       <p v-else class="notice__empty">暂无正文</p>
     </div>
 
+    <!-- 附件：文件存在后端，这里只显示名字/大小 + 下载地址 -->
+    <div v-if="notice?.attachments?.length" class="notice__files">
+      <a
+        v-for="file in notice.attachments"
+        :key="file.url"
+        :href="file.url"
+        :download="file.name"
+        class="notice__file"
+      >
+        <el-icon class="notice__file-icon"><Paperclip /></el-icon>
+        <span class="notice__file-name" :title="file.name">{{ file.name }}</span>
+        <span class="notice__file-size">{{ formatFileSize(file.size) }}</span>
+        <el-icon class="notice__file-down"><Download /></el-icon>
+      </a>
+    </div>
+
     <template #footer>
-      <el-button @click="visible = false">关闭</el-button>
+      <!-- 底部只留一个出口：关闭动作统一走「我已知晓」（右上角的 X 仍然保留） -->
       <el-button class="notice-dialog__confirm" @click="emit('confirm-read')">
         我已知晓
       </el-button>
@@ -36,6 +52,8 @@
  * 公告详情弹窗：只负责展示，开与关由父级 v-model 控制。
  */
 import { computed } from 'vue'
+import { Download, Paperclip } from '@element-plus/icons-vue'
+import { formatFileSize } from '@/api/notice'
 
 const props = defineProps({
   notice: { type: Object, default: null },
@@ -110,6 +128,53 @@ const typeTag = computed(() => TYPE_TAGS[props.notice?.type] ?? 'info')
   color: var(--st-text-secondary);
   text-align: center;
   text-indent: 0;
+}
+
+/* 附件列表：每行一个可下载的文件 */
+.notice__files {
+  display: flex;
+  margin-top: var(--st-gap-base);
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notice__file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--st-text-regular);
+  font-size: 13px;
+  text-decoration: none;
+  background: var(--st-bg-sunken);
+  border-radius: var(--st-radius-sm);
+  transition:
+    color var(--st-duration-fast) var(--st-ease),
+    background-color var(--st-duration-fast) var(--st-ease);
+}
+
+.notice__file:hover {
+  color: var(--st-primary);
+  background: var(--st-primary-light);
+}
+
+.notice__file-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice__file-size {
+  flex: 0 0 auto;
+  color: var(--st-text-secondary);
+  font-size: 12px;
+}
+
+.notice__file-icon,
+.notice__file-down {
+  flex: 0 0 auto;
 }
 
 /* 确认按钮：品牌渐变（渐变只用在这一点上，不铺满）
