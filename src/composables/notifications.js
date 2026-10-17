@@ -16,6 +16,10 @@
  */
 import { computed, ref } from 'vue'
 import { leaveRecords, notices as allNotices, todos } from '@/composables/appStore'
+import { useUserProfile } from '@/composables/userProfile'
+
+/** 当前用户 / 身份：通知内容要按人、按角色分流（见 buildInitialNotifications） */
+const { userName, isAdmin } = useUserProfile()
 
 /** 已读状态存本地：只存"读过哪些 id"，通知本身还是代码里的，刷新后能对上 */
 const READ_KEY = 'student-work-read-notifications'
@@ -46,6 +50,8 @@ function todayStr() {
  */
 function buildInitialNotifications() {
   const items = []
+  const admin = isAdmin.value
+  const me = userName.value
 
   const LEAVE_TITLE = {
     待审批: '请假申请已提交',
@@ -53,7 +59,31 @@ function buildInitialNotifications() {
     已驳回: '请假申请被驳回',
   }
 
+  /*
+   * 请假：两种身份看的东西不一样。
+   * - 学生：只看【自己的】申请状态（别人的请假跟我没关系）
+   * - 管理员：别人的「待审批」是需要他处理的，逐条提醒；
+   *           别人的已通过 / 已驳回已经处理完了，不再打扰他
+   * 自己的申请两种身份都看状态（管理员也请假）。
+   */
   for (const record of leaveRecords.value) {
+    const mine = record.name === me
+
+    if (admin && !mine) {
+      if (record.status !== '待审批') continue
+      items.push({
+        id: `leave-approve-${record.id}`,
+        type: 'leave',
+        title: `待审批：${record.name}`,
+        content: `${record.type} ${record.startDate.slice(5)} ~ ${record.endDate.slice(5)} · ${record.reason}`,
+        time: (record.applyTime || '').slice(5),
+        path: '/leave',
+      })
+      continue
+    }
+
+    if (!mine) continue
+
     const span = `${record.type} ${record.startDate.slice(5)} ~ ${record.endDate.slice(5)}`
     const extra =
       record.status === '已驳回' && record.rejectionReason ? ` · ${record.rejectionReason}` : ''
@@ -85,21 +115,28 @@ function buildInitialNotifications() {
     })
   }
 
-  // 待办：只报已逾期的（过了截止日又还没做完）。
-  // 逾期的最多留 2 条 —— 现在有 3 条逾期，全塞进去会把「请假被驳回」那种挤掉，
-  // 通知列表本来就该是各种事件混着，不然演示时看着像待办页的复制品。
+  /*
+   * 待办：只报已逾期的（过了截止日又还没做完）。
+   * - 学生：只看自己的
+   * - 管理员：看【全组】的（团队逾期归他管），所以条目上额外带负责人
+   * 逾期的最多留 2~3 条 —— 全塞进去会把「请假被驳回」那种挤掉，
+   * 通知列表本来就该是各种事件混着，不然演示时看着像待办页的复制品。
+   */
   const today = todayStr()
   const overdue = todos.value
     .filter((todo) => todo.dueDate < today && todo.status !== '已完成')
+    .filter((todo) => admin || todo.assignee === me)
     .sort((a, b) => b.dueDate.localeCompare(a.dueDate))
-    .slice(0, 2)
+    .slice(0, admin ? 3 : 2)
 
   for (const todo of overdue) {
     items.push({
       id: `todo-${todo.id}`,
       type: 'todo',
-      title: '待办已逾期',
-      content: `${todo.title} · 截止 ${todo.dueDate.slice(5)}`,
+      title: admin ? '团队待办已逾期' : '待办已逾期',
+      content: admin
+        ? `${todo.title} · ${todo.assignee} · 截止 ${todo.dueDate.slice(5)}`
+        : `${todo.title} · 截止 ${todo.dueDate.slice(5)}`,
       // 逾期这个事件发生在截止日结束的那一刻
       time: `${todo.dueDate.slice(5)} 23:59`,
       path: '/todo',

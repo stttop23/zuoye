@@ -18,6 +18,9 @@
       </div>
     </el-card>
 
+    <!-- 管理员才算总账：全组今天谁打了、几点、在哪 -->
+    <TeamCheckIn v-if="isAdmin" />
+
     <!-- 下面几块挨个淡入上移，带一点节奏（.st-delay-N 在 global.css 里） -->
     <StatCards :stats="stats" @navigate="onNavigate" />
 
@@ -38,6 +41,7 @@
  *
  * 本页已拆成四个子组件，都在 ./components/ 下：
  * CheckIn（每日打卡）、StatCards（数据卡片）、QuickActions（快捷入口）、RecentNotices（最新公告）
+ * TeamCheckIn（管理员的全组打卡）也在这里，只在管理员身份下渲染。
  */
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
@@ -53,6 +57,7 @@ import {
 } from '@/composables/appStore'
 import { DIRECTORY_CONTACTS } from '@/mock'
 import CheckIn from './components/CheckIn.vue'
+import TeamCheckIn from './components/TeamCheckIn.vue'
 import StatCards from './components/StatCards.vue'
 import QuickActions from './components/QuickActions.vue'
 import RecentNotices from './components/RecentNotices.vue'

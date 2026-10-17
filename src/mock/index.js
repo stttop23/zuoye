@@ -26,6 +26,18 @@
 /** 小组成员（写死，因为它不是业务数据） */
 export const MEMBERS = ['刘皖', '罗欣雨', '张晶']
 
+/**
+ * 团队今日打卡（演示数据）。
+ *
+ * ⚠️ 当前登录用户自己的那条**不在**这里 —— 它来自 appStore 的 checkin（真的点出来、带定位），
+ *    这样管理员在表格里看到的就是你自己真实打的那一条。
+ * ⚠️ 这里的时间/地点视为「今天」，不存日期；接后端后换成 GET /api/checkins?date=今天。
+ */
+export const TEAM_CHECKINS = [
+  { name: '罗欣雨', time: '08:52', place: '滁州学院会峰校区学生公寓', streak: 6 },
+  { name: '张晶', time: '09:05', place: '滁州学院会峰校区教学楼', streak: 12 },
+]
+
 /** 通讯录演示数据；联系方式为虚构示例，不对应真实号码或邮箱 */
 export const DIRECTORY_CONTACTS = [
   {
