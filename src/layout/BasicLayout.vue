@@ -886,30 +886,85 @@ watch(
   max-height: 320px;
   margin: 0;
   padding: 0;
+  /* 只允许上下滚：左右滑动会让弹层里的文字被推来推去，很难看也容易误触 */
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
 }
 
 .notify__item {
+  position: relative;
   padding: 8px 10px;
-  margin: 0 -10px;
+  /* ⚠️ 原来这里是 margin: 0 -10px：会让每条比容器宽 20px，
+     弹层里就多出一条横向滚动条。改成正 padding，背景也不贴边了。 */
+  margin: 0;
   border-radius: 6px;
   cursor: pointer;
+  transition: background-color var(--st-duration-fast) var(--st-ease);
 }
 
 .notify__item:hover {
-  background: var(--st-bg-page);
+  background: var(--st-bg-hover);
 }
 
-/* 未读的左边有一小竖条 */
+/* ---------- 未读 ----------
+ * ⚠️ 以前只有一条 3px 竖条 + 缩进，用户根本看不出哪条没读（尤其竖条颜色浅、条目又多时）。
+ *    现在用四重标识拉开层次：浅蓝底 + 左侧渐变竖条 + 右上角圆点 + 标题加粗。
+ *    已读则整体压暗，扫一眼就能分出「新的 / 看过的」。
+ */
 .notify__item--unread {
-  border-left: 3px solid var(--st-primary);
-  padding-left: 8px;
+  padding-right: 26px;
+  background: var(--st-primary-lighter);
+}
+
+.notify__item--unread:hover {
+  background: var(--st-primary-light);
+}
+
+/* 左侧渐变竖条：绝对定位，不占 padding，未读/已读左边缘保持一致 */
+.notify__item--unread::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 0;
+  width: 3px;
+  background: var(--st-gradient-brand);
+  border-radius: var(--st-radius-pill);
+}
+
+/* 右上角小圆点：不靠颜色也能看出「这条是新的」 */
+.notify__item--unread::after {
+  content: '';
+  position: absolute;
+  top: 13px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  background: var(--st-primary);
+  border-radius: 50%;
 }
 
 .notify__title {
   font-size: 14px;
   color: var(--st-text-primary);
+  /* 长标题/长链接别把弹层撑宽，直接换行 */
+  overflow-wrap: anywhere;
+}
+
+.notify__item--unread .notify__title {
+  font-weight: 600;
+}
+
+/* 已读：标题和正文都压暗一档，和未读形成明确对比 */
+.notify__item:not(.notify__item--unread) .notify__title {
+  font-weight: 400;
+  color: var(--st-text-regular);
+}
+
+.notify__item:not(.notify__item--unread) .notify__content {
+  color: var(--st-text-placeholder);
 }
 
 .notify__content,
@@ -917,5 +972,6 @@ watch(
   margin-top: 2px;
   font-size: 12px;
   color: var(--st-text-secondary);
+  overflow-wrap: anywhere;
 }
 </style>
